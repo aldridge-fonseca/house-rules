@@ -17,7 +17,7 @@ Account id in live model paths: `kldjalkdjwwpadjapdj`.
 | On-demand deployment `o4ubjdmu` — **untuned** Nano | `nano-untuned` ablation on both splits | 3,339 + 2,205 calls | `results/nvidia-v1/nano-untuned.jsonl`, `ours_timing.json` |
 | On-demand deployment `we32k66w` — tuned Nano | Live 100-message demo | 100 messages; **7 escalated** to Ultra (11.3–35.2 s), all others ≤ 425 ms | `demo/cached/results.jsonl`, `demo/cached/record_summary.json` |
 | Serverless `accounts/fireworks/models/nemotron-3-ultra-nvfp4` — Ultra 550B, per-token | `ultra-untuned` zero-shot baseline on both splits + gray-zone escalation inside `final`/`final-rawtext` | 5,562 baseline calls; 107 + 218 + 250 + 7 (demo) escalations | `results/nvidia-v1/ultra-untuned.jsonl`; `…>nemotron-3-ultra-nvfp4` chains in `final.jsonl`, `final-rawtext.jsonl`, `demo/cached/results.jsonl` |
-| **Training API** (dedicated trainer, shape `nemotron-nano-3-30b-a3b-262k-b200-lora`) | LoRA SFT of the specialist → `accounts/kldjalkdjwwpadjapdj/models/safety-one-nano-safety` | 1 run; job id **not recorded** | `scripts/train_api_sft.py --job nano`; model id in `results/nvidia-v1/OURS_SUMMARY.md` |
+| **Training API** (dedicated trainer, shape `nemotron-nano-3-30b-a3b-262k-b200-lora`) | LoRA SFT of the specialist → `accounts/kldjalkdjwwpadjapdj/models/safety-one-nano-safety` | 1 run; lifecycle id in event extract | `results/training/nano_sft_events.log`, `nano_sft_metrics.jsonl`; `scripts/train_api_sft.py --job nano` |
 
 Deployment create/delete timestamps and idle time are **not recorded**; eval wall-clock per run is in `ours_timing.json`.
 
@@ -46,7 +46,7 @@ Receipt check (median `usage.prompt_tokens`, `nvidia_test` answered rows): `fina
 |---|---|---|---|---|
 | **Nemotron Nano 3 30B-A3B** | `accounts/fireworks/models/nemotron-nano-3-30b-a3b` | Small open MoE: cheap to serve on-demand, LoRA-tunable through the Fireworks Training API. Specialist role. | LoRA base; also served untuned on `o4ubjdmu` as an ablation | `config/train.yaml` (`model.base_model`); `results/nvidia-v1/nano-untuned.jsonl` (`prediction.model`) |
 | **Tuned specialist** (LoRA artifact on Nano) | `accounts/kldjalkdjwwpadjapdj/models/safety-one-nano-safety` | Tuned on NVIDIA's own safety data; beats the ~18× larger Ultra zero-shot by **+10.8 macro-F1 [+9.4, +12.4]** at ~half the $/msg | Default + multilingual lanes; deployments `qd2gx85j`, `ier7tjje`, `we32k66w` | `results/nvidia-v1/OURS_SUMMARY.md` (paired test vs `ultra-untuned`); `final.jsonl`, `specialist-only.jsonl`, `demo/cached/results.jsonl` |
-| **Nemotron 3 Ultra NVFP4 550B** | `accounts/fireworks/models/nemotron-3-ultra-nvfp4` | Largest open Nemotron: the zero-shot ceiling baseline and the escalation target for gray-zone rows only — Ultra capacity is paid for only when the specialist is unsure (3.2 % of `nvidia_test`) | Fireworks **serverless** chat; `nvidia-ultra-zeroshot` baseline; escalation target in `full`/`final` | `config/systems.yaml` (`nvidia-ultra-zeroshot`); `config/router.yaml` (`providers.escalation`); `results/nvidia-v1/ultra-untuned.jsonl`; escalated chains in `final.jsonl` |
+| **Nemotron 3 Ultra NVFP4 550B** | `accounts/fireworks/models/nemotron-3-ultra-nvfp4` | Largest open Nemotron: the evaluated zero-shot baseline and the escalation target for gray-zone rows only — Ultra capacity is paid for only when the specialist is unsure (3.2 % of `nvidia_test`) | Fireworks **serverless** chat; `nvidia-ultra-zeroshot` baseline; escalation target in `full`/`final` | `config/systems.yaml` (`nvidia-ultra-zeroshot`); `config/router.yaml` (`providers.escalation`); `results/nvidia-v1/ultra-untuned.jsonl`; escalated chains in `final.jsonl` |
 | **Nemotron 3.5 Super VL 120B** (vision) | `accounts/fireworks/models/nvidia-nemotron-3p5-super-vl-120b-a12b-nvfp4` | Multimodal Nemotron for the image lane | Wired for the image route; deploy recipe in `scripts/vision_deploy.sh`. **No evaluated vision run is shipped** — the only demo image case (`c11`) routed to the text specialist (`route: specialist`, `has_image: false`) | `config/router.yaml` (`providers.vision`); `config/systems.yaml` (`vision-routed`); `demo/cached/results.jsonl` |
 | Nemotron Lightning 3.5 30B (catalog) | `accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b` | Cheap text baseline candidate | Configured as `nvidia-lightning-zeroshot` / `vision-text-only`; not in shipped runs | `config/systems.yaml` only |
 | Muse Glimmer 30B (non-NVIDIA hedge) | `accounts/fireworks/models/muse-glimmer-30b` | Fallback if Nemotron SFT had failed | Fallback / free-SFT recipe only; not in shipped runs | `config/train.yaml` (`fallback`/`fast_fallback`); `scripts/train_api_sft.py --job glimmer` |
@@ -75,7 +75,7 @@ How: text-only JSON-label SFT (`{"label","categories"}`) under the project taxon
 
 | Feature | Status | Evidence |
 |---|---|---|
-| **Training API LoRA SFT** (streamed local JSONL → dedicated trainer → promote account model) | **Used** for the specialist | Recipe: `scripts/train_api_sft.py --job nano` (base Nano, shape `accounts/fireworks/trainingShapes/nemotron-nano-3-30b-a3b-262k-b200-lora`, LoRA rank **8** / alpha **32**, 1 epoch, batch 32, lr `1e-4`, `output_model_id=safety-one-nano-safety`). Data path named in `data/README.md` ("training API run"). Promoted model id in `results/nvidia-v1/OURS_SUMMARY.md`. Fireworks trainer/session id: **not recorded** in this repo. Train wall-clock and billed training GPU-$: **not recorded** here (script notes ~2× B200; rate "not separately published"). |
+| **Training API LoRA SFT** (streamed local JSONL → dedicated trainer → promote account model) | **Used** for the specialist | Recipe: `scripts/train_api_sft.py --job nano` (base Nano, shape `accounts/fireworks/trainingShapes/nemotron-nano-3-30b-a3b-262k-b200-lora`, LoRA rank **8** / alpha **32**, 1 epoch, batch 32, lr `1e-4`, `output_model_id=safety-one-nano-safety`). Data path named in `data/README.md` ("training API run"). Promoted model id in `results/nvidia-v1/OURS_SUMMARY.md`. Recovered lifecycle and metrics: [`results/training/README.md`](../results/training/README.md). Trainer created→deleted **18 min 56 s**; **19,806** train rows after filtering, **620** optimizer steps, **2,475** dev examples, eval loss **0.753→0.104**. Billed training GPU-$ and exact historical cookbook revision: **not recorded**. |
 | **Managed LoRA SFT** (`firectl dataset create` + `firectl sftj create`) | **Prepared; not evidenced as completed** | Scripts: `scripts/train_sft.py`, `scripts/train_upload.py`, `scripts/train_launch.sh`, `scripts/train_poll.py`. `train_launch.sh` documents upload endpoint `FailedPrecondition` / "dataset uploads are temporarily disabled". **No** managed `sftj` job id appears under `results/`. `config/train.yaml` is the draft for this unused path (alpha 16, `max_train_rows: 8000`). |
 | **Dataset upload** (`firectl dataset create <id> <file>`) | **Not evidenced as completed** for the winning run | Same scripts; the Training API path streams local files and "never calls the disabled dataset-upload endpoint" (`train_api_sft.py` docstring). Optional `--external-url` register path is documented only. |
 | **On-demand deployment** (live-merge LoRA / base Nano) | **Used** | Create: `scripts/deploy_create.py` → `firectl deployment create … --deployment-shape default`. Teardown: `scripts/deploy_teardown.py` → `firectl deployment delete <ID> --ignore-checks`. Live ids in receipts: `qd2gx85j`, `o4ubjdmu`, `ier7tjje`, `we32k66w` (`OURS_SUMMARY.md`, `ours_timing.json`, `demo/cached/results.jsonl`). Create/delete timestamps for those deployments: **not recorded** in shipped files (only eval wall-seconds in `ours_timing.json`). |
@@ -125,7 +125,7 @@ pip install -e cookbook/training
 # then: python3 scripts/train_api_sft.py --help
 ```
 
-### 3) Training config (Training API path that matches the promoted adapter)
+### 3) Documented recipe for reproducing the promoted-adapter setup
 
 Defaults from `scripts/train_api_sft.py` (overrides `config/train.yaml` alpha-16 draft for managed SFT). **Paid** once launched:
 
@@ -209,7 +209,7 @@ The $/1M figures below are **marginal cost at full utilization**. One always-on 
 
 | Step | Time (receipt) | $ (receipt) |
 |---|---|---|
-| Training API Nano LoRA | **not recorded** | **not recorded** |
+| Training API Nano LoRA | 18 min 56 s created→deleted (`results/training/nano_sft_events.log`) | **not recorded** |
 | Managed `sftj` / dataset upload | n/a (no completed job id) | n/a |
 | Deploy `qd2gx85j` / `ier7tjje` / `o4ubjdmu` / `we32k66w` lifetime (create→delete) | **not recorded** | **not recorded** |
 | `final` eval wall on `nvidia_test` | **49.3 s**, 3,340 calls (`ours_timing.json`) | GPU alloc **$0.1781** + Ultra tokens **$0.0096** → **~$56 / 1M msgs** (`final_headline.json`) |

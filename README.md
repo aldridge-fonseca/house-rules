@@ -3,9 +3,8 @@
 **Your safety policy, enforced.** A content-moderation pipeline built on open
 NVIDIA models served by Fireworks. It decides `safe` / `unsafe` under an
 explicit, configurable policy — with an auditable route trail, measured
-latency, and measured cost per verdict — instead of delegating the decision to
-a closed frontier API that applies a policy you don't control and sometimes
-refuses to answer at all.
+latency, and measured cost per verdict — rather than relying entirely on a
+closed frontier API that may refuse classification.
 
 ![Built on Fireworks AI](https://img.shields.io/badge/built%20on-Fireworks%20AI-e8590c)
 ![NVIDIA Nemotron Nano 3 · Ultra](https://img.shields.io/badge/NVIDIA%20Nemotron-Nano%203%20%C2%B7%20Ultra%20550B-76b900)
@@ -24,10 +23,10 @@ needed) — see [Demo](#demo).
 
 | System | Macro-F1 | Unsafe recall | Over-block % | Refused % | p50 ms | p95 ms | $/1M msgs |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| **House Rules** (tuned Nano pipeline) | **95.3** | **97.6** | 5.5 | 0.0 | **644** | **1,193** | **$56** |
+| **House Rules** (tuned Nano pipeline) | 95.3 | 97.6 | 5.5 | 0.0 | 644 | 1,193 | $56 |
 | Nemotron Nano 3 30B, untuned | 82.7 | 93.3 | 27.8 | 0.0 | 804 | 1,157 | $64 |
-| Nemotron 3 Ultra 550B, zero-shot | 84.5 | 86.7 | **3.3** | 0.0 | 710 | 1,594 | $108 |
-| GPT-6.1 Sol | 71.5 | 70.0 | **1.1** | 1.9 | 3,235 | 6,066 | $1,820 |
+| Nemotron 3 Ultra 550B, zero-shot | 84.5 | 86.7 | 3.3 | 0.0 | 710 | 1,594 | $108 |
+| GPT-6.1 Sol | 71.5 | 70.0 | 1.1 | 1.9 | 3,235 | 6,066 | $1,820 |
 | Claude Opus 5.5 | 69.0 | 67.6 | 3.9 | 13.0 | 2,966 | 5,657 | $6,045 |
 
 Paired on the same 3,340 rows (refusals scored as errors): **+23.8 macro-F1
@@ -44,8 +43,8 @@ marginal cost per message. Details and receipts: [Results](#results) ·
   policy on held-out data.
 - **Intended user.** Product and trust-and-safety teams at message volume —
   chat, social, UGC, AI companions — who need a configurable, auditable
-  moderation verdict and can't accept a closed API's fixed policy, refusal
-  behavior, tail latency, or per-token pricing.
+  moderation verdict with control over deployment, refusal behavior, tail
+  latency, and per-token pricing.
 - **Approach.** Deterministic clean-up and rules first; a small fine-tuned
   open model second; an expensive model only for the gray zone. A message is
   normalized (obfuscation unfolds), screened by a rule gate, routed by content
@@ -56,14 +55,13 @@ marginal cost per message. Details and receipts: [Results](#results) ·
   for one always-on House Rules GPU vs **~$182K** on GPT-6.1 Sol or
   **~$605K** on Claude Opus 5.5 — while scoring higher, refusing **0%** of
   requests, and logging every verdict's route, model, and cost for audit.
-  (Below ~5M msgs/month pay-per-token is cheaper — see the
-  [monthly bill](#nvidia-policy-held-out-test-n--3340).) Fine-tuning a 30B
-  open model on the target policy beat the same model untuned by **+12.6
-  macro-F1** and a 550B zero-shot model by **+10.8** on 3,340 held-out cases,
-  at roughly half the cost per message — with the caveat that both NVIDIA
-  baselines ran *policy-blind* (a minimal prompt with no policy text; see
-  [Method](#results)). Teams adopt this to own their policy, eliminate
-  refusal-as-product-failure, and keep safety spend flat as volume grows.
+  (GPT is cheaper below ≈5.2M msgs/month; serverless Ultra below ≈90M —
+  see the [monthly bill](#nvidia-policy-held-out-test-n--3340).) The tuned
+  pipeline scored **+12.6 macro-F1** over the policy-blind untuned Nano and
+  **+10.8** over the policy-blind 550B Ultra on 3,340 held-out cases, at
+  roughly half Ultra's marginal cost per message. These comparisons mix
+  tuning with policy access (see [Method](#results)). Teams can adopt this
+  to control deployment, audit decisions, and make capacity spend predictable.
 
 ## Built with — sponsor technology, with receipts
 
@@ -72,7 +70,7 @@ Every claim below cites a receipt in this repo;
 
 | What ran | Fireworks surface | NVIDIA model / asset | Receipt |
 |---|---|---|---|
-| LoRA SFT of the specialist — rank 8, alpha 32, 1 epoch, lr 1e-4, batch 32 on `data/nvidia/filtered/train_sft.jsonl` (19,830 recipe-input rows — exact consumed count, trainer job id, wall-clock and train cost **not recorded**) | **Training API** — `scripts/train_api_sft.py --job nano` | Nemotron Nano 3 30B-A3B | promoted model `…/models/safety-one-nano-safety` in `results/nvidia-v1/ours_summary.json`, `…/final.jsonl` |
+| LoRA SFT of the specialist — rank 8, alpha 32, 1 epoch, lr 1e-4, batch 32 on `data/nvidia/filtered/train_sft.jsonl` (19,830 input rows, 19,806 after filtering; 620 steps; ≈19 min trainer lifecycle; billed train cost **not recorded**) | **Training API** — `scripts/train_api_sft.py --job nano` | Nemotron Nano 3 30B-A3B | [training lifecycle + metrics](results/training/README.md); promoted model in `results/nvidia-v1/final.jsonl` |
 | Tuned specialist + untuned-Nano ablation on dedicated deployments (1× B200 each) | **On-demand deployments** — `scripts/deploy_create.py` | Nemotron Nano 3 30B-A3B (base + LoRA) | deployment ids `qd2gx85j` / `o4ubjdmu` / `ier7tjje` in `results/nvidia-v1/ours_timing.json`, `…/*.jsonl` |
 | Large zero-shot baseline + gray-zone escalation target | **Serverless inference** (per-token) | Nemotron 3 Ultra 550B | `results/nvidia-v1/ultra-untuned.jsonl`; escalated rows in `results/nvidia-v1/final.jsonl` |
 | Train + held-out eval data | — | Nemotron-3.5 Content Safety Dataset (CC-BY-4.0); Aegis 2.0 test subset | `data/nvidia/manifest.json`, `data/README.md` |
@@ -90,13 +88,13 @@ identical:
   (`scripts/nano_ladder.py` `TRAIN_SYSTEM_PROMPT`: "…using the project
   taxonomy"). The policy itself is learned from the LoRA training data, not
   written into the prompt.
-- **Untuned Nano and Ultra zero-shot baselines** — the minimal label-only
-  prompt in `safety_one/providers/fireworks.py` ("Classify the user content
-  for content safety…"), **with no policy text**: ≈83–93 median prompt
-  tokens across the shipped receipts. These NVIDIA zero-shot baselines are
-  therefore *policy-blind*, and their gap to House Rules mixes fine-tuning
-  with policy knowledge (see
-  [Limitations](#tradeoffs-and-limitations)).
+- **Untuned Nano** — the same one-line training prompt as the tuned Nano
+  (`TRAIN_SYSTEM_PROMPT`), without policy definitions.
+- **Ultra zero-shot** — the minimal label-only prompt in
+  `safety_one/providers/fireworks.py` ("Classify the user content for content
+  safety…"), without policy definitions. Both NVIDIA zero-shot baselines
+  are *policy-blind*; their gap to House Rules mixes fine-tuning with policy
+  knowledge (see [Limitations](#tradeoffs-and-limitations)).
 - **GPT-6.1 Sol and Claude Opus 5.5** — the full shared policy + 26-category
   taxonomy prompt (`safety_one/providers/frontier.py` `moderation_prompt()`),
   ≈390 (GPT tokenizer) / ≈725 (Opus tokenizer) extra input tokens per
@@ -206,7 +204,7 @@ rows only).*
 
 | System | Macro-F1 | Unsafe recall | Over-block % | Refused % | p50 ms | p95 ms | $/1M msgs | Marginal bill 1M / 10M / 100M per mo |
 |---|---:|---:|---:|---:|---:|---:|---:|---|
-| House Rules | 82.0 | **89.4** | 25.3 | 0.0 | **571** | **1,115** | $69 | $69 / $692 / $6,920 |
+| **House Rules** | 82.0 | 89.4 | 25.3 | 0.0 | 571 | 1,115 | $69 | $69 / $692 / $6,920 |
 | Nemotron Nano 3 30B, untuned | 63.3 | 94.0 | 62.2 | 0.0 | 775 | 1,086 | $63 | $63 / $627 / $6,270 |
 | Nemotron 3 Ultra 550B, zero-shot | 82.0 | 83.8 | 19.9 | 0.0 | 713 | 1,013 | $148 | $148 / $1,484 / $14,840 |
 
@@ -272,11 +270,13 @@ actually answered (same receipts): GPT-6.1 Sol **73.0** vs ours **95.3**
 | specialist › escalation | 34 | 1.0% | 54.7 |
 | rule | 0 | — | — |
 
-Escalated rows are the hard ones (68.2% accuracy) — the gray-zone lane is
-doing its job by absorbing them without dragging down the cheap lanes.
+Escalated rows finished at 68.2% accuracy. This selected slice alone does
+not establish escalation benefit; the specialist-only comparison below
+measures the on-policy tradeoff.
 
-**Ablations.** Removing normalization (clean-up) costs **+8.0 macro-F1** on
-disguised attacks — base64-wrapped unsafe recall collapses to 0.7%. The
+**Ablations.** Clean-up-off scored **8.0 macro-F1 points lower** in the
+cross-run disguised comparison (caveat below); its base64-wrapped unsafe
+recall was 0.7%. The
 specialist-only ablation (no rules, router, or escalation) is **+0.2** [−0.4,
 +0.7], n.s. on-policy: the full pipeline's evidenced exchange there is
 over-block **7.3 → 5.5%** in return for lower recall (98.0 → 97.6), higher
@@ -343,29 +343,34 @@ specialist does not need.
 
 1. **Normalize (stage 0).** Unicode NFKC, zero-width removal, conservative
    leetspeak/confusable folding, bounded base64/ROT13 decode. The original
-   text is always retained; the model sees the normalized view. This step is
-   worth **+8.0 macro-F1** on disguised attacks — with it off, unsafe recall
-   on base64-wrapped input collapses to 0.7%.
+   text is always retained; the model sees the normalized view. The cross-run
+   clean-up comparison shows **+8.0 macro-F1** on disguised attacks (see
+   Ablations); clean-up-off base64 unsafe recall was 0.7%.
 2. **Rule gate.** Deterministic PII / jailbreak / policy-pattern checks. A
    high-confidence hit short-circuits to a verdict (no NVIDIA-test row was
    rule-decided; the gate mostly matters for obvious cases and audit).
 3. **Router.** Deterministic routing on content type: image or emoji-dense →
    vision lane; non-English → multilingual lane; otherwise → specialist.
+   The evaluated text factory overrides emoji-dense text to the specialist;
+   generic config reserves the vision route.
 4. **Specialist.** NVIDIA Nemotron Nano 3 30B-A3B with a LoRA adapter —
    rank 8, alpha 32, 1 epoch, lr 1e-4, batch 32 on
    `data/nvidia/filtered/train_sft.jsonl` (19,830 input rows), per the
    `scripts/train_api_sft.py --job nano` recipe on the Fireworks Training API;
-   the count the trainer actually consumed, the job id, wall-clock and cost
-   were **not recorded** —
-   served on a dedicated Fireworks deployment (1× B200). `config/train.yaml`
+   recovered [training records](results/training/README.md) show 19,806
+   consumed rows (24 filtered), 620 steps, 2,475 dev examples and eval loss
+   0.753 → 0.104. Trainer creation to deletion took 18 min 56 s; billed
+   training cost and exact historical software revision remain **not recorded**.
+   The adapter is served on a dedicated Fireworks deployment (1× B200). `config/train.yaml`
    is the earlier draft for the unused managed-SFT path. The multilingual
    lane uses the same tuned model; the vision lane is a Nemotron 3.5 Super VL
    120B on-demand deployment (not evaluated in this submission).
-5. **Confidence gate.** If P(unsafe) lands in the gray zone (default
-   [0.35, 0.65], widened per high-stakes category), the row escalates to
+5. **Confidence gate.** If the label-token-derived unsafe score lands in
+   the gray zone (default [0.35, 0.65], widened per high-stakes category),
+   or the generated label conflicts with that score, the row escalates to
    **Nemotron 3 Ultra 550B** on Fireworks serverless. Only 3.2% of
    NVIDIA-policy rows and 9.8% of disguised rows escalate — the rest pay the
-   small model's price.
+   small model's price. These scores are not empirically calibrated probabilities.
 
 Every verdict carries `{label, categories, route, rule_hits, model, latency,
 cost}` — an auditable path for each decision.
@@ -375,7 +380,7 @@ cost}` — an auditable path for each decision.
 The shipped numbers are scored under NVIDIA's Nemotron-3.5 policy; the
 pipeline is not married to it.
 
-**Without retraining — config only** (`config/router.yaml`):
+**Adjust routing and operating point without retraining** (`config/router.yaml`):
 
 ```yaml
 confidence_gate:
@@ -387,21 +392,25 @@ confidence_gate:
 
 Moving `calibration.unsafe_threshold` or the gray-zone band changes verdicts
 on the *same* specialist scores — the demo's threshold slider re-scores the
-cached P(unsafe) values live with no model call. Route rules
+eligible cached label-token scores with no model call; rows flagged
+`probs_reliable=false` retain their recorded labels. Route rules
 (`route_order`, `emoji_route`, `non_english_route`) and the rule-gate
 patterns are declarative too.
 
 **With retraining — a new policy needs labeled data and a LoRA pass:**
 
 1. Label rows under the new taxonomy (`scripts/prep_nvidia.py`-style; the
-   shipped adapter's recipe input was 19,830 train + 2,479 dev rows; the count
-   actually consumed was **not recorded**).
+   shipped adapter's input was 19,830 train + 2,479 dev rows; its
+   [training records](results/training/README.md) show 19,806 train rows
+   after filtering and 2,475 evaluated dev examples).
 2. `python scripts/train_api_sft.py --job nano` — the shipped adapter's
-   recipe on the Fireworks Training API; its wall-clock and cost were
-   **not recorded**.
-3. `scripts/deploy_create.py` → dedicated deployment, then
-   `scripts/calibrate_gate.py` re-fits the threshold and gray zone on a dev
-   split.
+   recipe on the Fireworks Training API. The logged trainer lifecycle was
+   18 min 56 s; billed cost remains **not recorded**.
+3. `scripts/deploy_create.py` → dedicated deployment. First collect
+   `specialist-only` and `calib-escalate-all` dev receipts (paid inference);
+   then run the offline threshold/band search with
+   `scripts/calibrate_gate.py --dev-dir <dev-receipts-dir>`. See its
+   [input contract](scripts/calibrate_gate.py); the search itself makes no calls.
 4. Re-run `scripts/run_eval.py` + `scripts/nvidia_summary.py` for receipted
    numbers under the new policy.
 
@@ -480,8 +489,8 @@ Read the meters the right way:
   [Bring your own policy](#bring-your-own-policy)), the measured numbers
   don't transfer.
 - **Baseline prompts are asymmetric (disclosed, not corrected).** The
-  untuned-Nano and Ultra zero-shot baselines ran the minimal label-only
-  prompt and never saw the written policy, while the frontier arms saw the
+  untuned Nano used the one-line training prompt; Ultra used the minimal
+  label-only prompt. Neither saw the written policy, while frontier arms saw the
   full ≈390–725-token policy prompt (see Method). So "+12.6 over untuned
   Nano" and "+10.8 over Ultra 550B" mix fine-tuning with policy knowledge —
   a policy-prompted Ultra could score higher than 84.5 (untested). Re-running
@@ -519,21 +528,22 @@ Read the meters the right way:
 ## Setup
 
 Requires Python 3.12. The test suite, the offline eval, the receipt
-regeneration scripts, the notebook, and the replay demo make **no paid
-calls**.
+regeneration scripts, the notebook's core cells, and the replay demo make
+**no paid calls**. The optional notebook live cell makes paid calls only
+when explicitly enabled and configured.
 
 ```bash
 python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env        # fill in keys for live runs only
-python -m pytest -q         # 352 tests, all offline
+python -m pytest -q         # offline tests; live calls are mocked
 ```
 
 ## Reproduce
 
-The first three blocks are **$0 and offline**: the scripts read the shipped
-receipts in `results/` and make no network calls. Only re-running models —
+The mock eval, receipt-summary scripts and replay demo below are **$0 and
+offline**. Commands marked live make paid calls. Only re-running models —
 evals, training, deployments, `--live` demo, frontier baselines — needs
 `FIREWORKS_API_KEY` / `FIREWORKS_ACCOUNT_ID` / `ROUTER_*` keys from `.env`.
 
@@ -541,7 +551,7 @@ evals, training, deployments, `--live` demo, frontier baselines — needs
 # Offline eval on bundled fixtures + mock arms ($0)
 python scripts/run_eval.py
 
-# Recompute every reported number from receipts ($0, no model calls)
+# Recompute headline receipt summaries ($0, no model calls)
 python scripts/nvidia_summary.py            # -> results/nvidia-v1/ours_summary.json (+ table to stdout)
 python scripts/final_headline.py            # -> results/nvidia-v1/final_headline.json
 python scripts/stats_vs_frontier.py         # -> results/stats/vs_frontier.{json,md}
@@ -551,9 +561,12 @@ python scripts/stats_disguised_clustered.py # -> results/stats/disguised_cluster
 python demo/server.py                  # http://127.0.0.1:8787/
 python demo/server.py --live           # real calls, needs keys
 
-# Recreate the headline arm on the prepared datasets (live; needs .env keys)
+# Live rerun caveat: 320 bundled disguised rows are redacted placeholders.
+# Restore locally from authorized upstream data per data/frozen/README.md
+# before a full disguised rerun; placeholders cannot recreate published scores.
+# Recreate the headline arm (live; needs keys and restored disguised text)
 export FIREWORKS_API_KEY=...                                   # live calls
-export FIREWORKS_MODEL=accounts/<acct>/deployments/<id>        # tuned-Nano deployment
+export FIREWORKS_MODEL='accounts/<acct>/deployments/<id>'      # replace with tuned deployment
 python scripts/run_eval.py \
   --data data/nvidia/test.jsonl \
   --data data/frozen/disguised_v1.jsonl \
@@ -591,19 +604,20 @@ receipts are `results/nvidia-v1/`, `results/nvidia-v1-frontier/`,
 
 ## Reproduce in a notebook
 
-`notebooks/house_rules_eval.ipynb` is a keyless, top-to-bottom demonstration:
+`notebooks/house_rules_eval.ipynb` has a keyless, offline core:
 it reloads the run receipts in `results/nvidia-v1/` and
-`results/nvidia-v1-frontier/`, recomputes every headline number above with the
+`results/nvidia-v1-frontier/`, recomputes headline receipt summaries with the
 repo's own scoring code (`safety_one.eval.metrics`,
-`scripts/nvidia_summary.py`), and **asserts each one matches this README** —
+`scripts/nvidia_summary.py`), and **checks expected published values** —
 quality/cost/latency charts, a monthly-bill table at 1M–100M messages, the
 per-route breakdown, real example rows (errors included), and one optional
-live-classification cell that is skipped unless `FIREWORKS_API_KEY` and
-`FIREWORKS_MODEL` are set.
+live-classification cell that requires `HR_NOTEBOOK_RUN_LIVE=1`,
+`FIREWORKS_API_KEY` and `FIREWORKS_MODEL`. The command below explicitly
+disables that optional cell, even if credentials exist in `.env`.
 
 ```bash
 source .venv/bin/activate
-jupyter nbconvert --to notebook --execute --inplace notebooks/house_rules_eval.ipynb
+HR_NOTEBOOK_SKIP_LIVE=1 jupyter nbconvert --to notebook --execute --inplace notebooks/house_rules_eval.ipynb
 ```
 
 ## Data and licenses

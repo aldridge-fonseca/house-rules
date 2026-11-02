@@ -186,8 +186,10 @@ Paired vs `final` on nvidia_test (row-level):
 - No row of `nvidia_test` was routed to the rule gate (all model-decided).
 - Training: LoRA SFT via the Fireworks Training API (`scripts/train_api_sft.py --job nano`);
   rank 8, alpha 32, 1 epoch, lr 1e-4, batch 32 on `data/nvidia/filtered/train_sft.jsonl`
-  (19,830 rows available; `--max-examples` default None). Trainer job id, wall-clock and training
-  cost: **not recorded**. `config/train.yaml` is the draft for the unused managed-SFT (`firectl sftj`) path.
+  (19,830 input rows; `--max-examples` default None). Recovered
+  [training records](../training/README.md) show 19,806 rows after filtering,
+  620 steps and an 18 min 56 s trainer lifecycle. Billed training cost and
+  exact historical trainer revision: **not recorded**. `config/train.yaml` is the draft for the unused managed-SFT (`firectl sftj`) path.
 - Reproduce tables ($0): `.venv/bin/python scripts/nvidia_summary.py` (writes `ours_summary.json`);
   `.venv/bin/python scripts/stats_disguised_clustered.py` (writes `results/stats/disguised_clustered.*`).
 

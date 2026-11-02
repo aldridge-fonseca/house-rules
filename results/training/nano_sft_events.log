@@ -1,0 +1,11 @@
+10:44:16 [INFO] launch job=nano base=accounts/fireworks/models/nemotron-nano-3-30b-a3b shape=accounts/fireworks/trainingShapes/nemotron-nano-3-30b-a3b-262k-b200-lora serverless=False lora=8/32 lr=0.0001 epochs=1 batch=32 max_seq=2048 out_model=safety-one-nano-safety
+10:44:17 [INFO] Created trainer job: training-api-service-7e4dbf59
+10:46:27 [INFO] Dataset: 19830 examples from ./data/nvidia/filtered/train_sft.jsonl (renderer=nemotron3_disable_thinking, train_on_what=all_assistant_messages, workers=2, seed=0) -> ~620 batches/epoch x 1 epochs + 2475 eval examples
+10:46:28 [INFO] [Eval] Running evaluation (2475 examples)...
+10:49:46 [INFO] [Eval] Pre-training | Loss: 0.7531 | PPL: 2.12 | Tokens: 38862
+10:59:16 [INFO] Seq-length / format filter: 24/19830 raw rows filtered
+10:59:16 [INFO] [Eval] Running evaluation (2475 examples)...
+11:02:29 [INFO] [Eval] Epoch 1 | Loss: 0.1044 | PPL: 1.11 | Tokens: 38862
+11:03:13 [INFO] Training complete: 620 optimizer steps
+11:03:13 [INFO] Deleted trainer job: training-api-service-7e4dbf59
+11:03:16 [INFO] DONE job=nano final={'steps': 620, 'job_id': 'training-api-service-7e4dbf59'}
