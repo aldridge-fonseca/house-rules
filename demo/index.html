@@ -334,20 +334,33 @@ function renderMeters(lane){
     <div class="meter"><div class="v">${m.p50.toFixed(0)}</div><div class="k">p50 ms · demo</div></div>
     <div class="meter"><div class="v">${m.p95.toFixed(0)}</div><div class="k">p95 ms · demo</div></div>
     <div class="meter"><div class="v">$${fmtInt(m.per1m)}</div><div class="k">$/1M · this demo run</div></div>
-    <div class="meter"><div class="v v-acc">${prodUsd}</div><div class="k">$/1M · production basis</div></div>`;
+    <div class="meter"><div class="v v-acc">${prodUsd}</div><div class="k">$/1M · sat. amort.</div></div>`;
   const notes = $(`notes-${lane}`);
   if(!notes) return;
   const bits = [];
   bits.push(`<b>this 100-message demo run</b> (low utilization, GPU time ÷ 100 msgs): ` +
             `$${fmtInt(m.per1m)}/1M · p50 ${m.p50.toFixed(0)} ms · p95 ${m.p95.toFixed(0)} ms`);
   if(p && p.usd_per_1m_msgs != null){
-    bits.push(`<b class="ok">production basis (from results/)</b>: ` +
+    bits.push(`<b class="ok">marginal $/1M at saturation</b> (GPU rental amortized at full utilization; not a monthly bill): ` +
               `$${fmtInt(p.usd_per_1m_msgs)}/1M` +
               (p.p50_ms != null ? ` · p50 ${fmtInt(p.p50_ms)} ms` : "") +
               (p.p95_ms != null ? ` · p95 ${fmtInt(p.p95_ms)} ms` : "") +
               (p.n ? ` · n=${fmtInt(p.n)} ${p.set||"nvidia_test"}` : ""));
   }
   if(lane === "ours"){
+    const ao = PROD && PROD.production && PROD.production.always_on;
+    if(ao && ao.floor_usd_per_month != null){
+      const beG = ao.break_even_vs_gpt_msgs_per_month;
+      const beO = ao.break_even_vs_opus_msgs_per_month;
+      bits.push(`<b class="warn">always-on 1× B200 floor</b>: ` +
+                `$${fmtInt(ao.floor_usd_per_month)}/mo` +
+                (ao.token_usd_per_1m_msgs != null
+                  ? ` + ~$${ao.token_usd_per_1m_msgs}/1M Ultra tokens`
+                  : "") +
+                ` · at low volume GPT is cheaper` +
+                (beG ? ` · break-even ~${(beG/1e6).toFixed(1)}M msgs/mo vs GPT` : "") +
+                (beO ? ` / ~${(beO/1e6).toFixed(2)}M vs Opus` : ""));
+    }
     const en = escNote();
     if(en) bits.push(en);
     if(p && p.p95_ms != null)
@@ -393,12 +406,17 @@ function renderReceipt(){
                                        : `n=${a.n} ours / ${b.n} frontier (images: ours only)`;
   $("rc-acc").innerHTML = `acc <b>${(a.acc*100).toFixed(1)}%</b> vs ${(b.acc*100).toFixed(1)}%`;
   $("rc-f1").innerHTML = `macro-F1 <b>${(a.f1*100).toFixed(1)}</b> vs ${(b.f1*100).toFixed(1)}`;
+  const ao = PROD && PROD.production && PROD.production.always_on;
   $("rc-per1m").innerHTML =
     `<span>$/1M · <b>this demo run</b> <b>$${fmtInt(a.per1m)}</b> vs $${fmtInt(b.per1m)}</span>` +
-    `<span class="sub">production basis (from results/): ` +
+    `<span class="sub">marginal $/1M at saturation: ` +
     `<b>$${po && po.usd_per_1m_msgs != null ? fmtInt(po.usd_per_1m_msgs) : "—"}</b>` +
     ` vs $${pf && pf.usd_per_1m_msgs != null ? fmtInt(pf.usd_per_1m_msgs) : "—"} ` +
-    `(GPU rental amortized at full utilization)</span>`;
+    `(GPU rental amortized at full utilization; not a monthly bill` +
+    (ao && ao.floor_usd_per_month != null
+      ? `; always-on 1× B200 floor $${fmtInt(ao.floor_usd_per_month)}/mo`
+      : "") +
+    `)</span>`;
   $("rc-cost").innerHTML = `$ spent (demo) <b>${a.cost.toFixed(4)}</b> vs ${b.cost.toFixed(4)}`;
   const en = escNote();
   $("rc-lat").innerHTML =

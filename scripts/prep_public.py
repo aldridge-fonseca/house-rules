@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build eval JSONL files from public safety benchmarks (safety-one/data/public/).
+"""Build eval JSONL files from public safety benchmarks (data/public/).
 
 Reads raw downloads from data/public/raw/<benchmark>/ (gitignored) and writes
 one JSONL per benchmark in the eval-row schema:
@@ -74,7 +74,7 @@ VLGUARD_ZIP_URL = "https://huggingface.co/datasets/ys-zong/VLGuard/resolve/main/
 
 def fetch(url: str, dest: Path, token: str | None = None) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
-    req = urllib.request.Request(url, headers={"User-Agent": "safety-one-prep/1.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "house-rules-data/1.0"})
     if token:
         req.add_header("Authorization", f"Bearer {token}")
     with urllib.request.urlopen(req, timeout=120) as r, open(dest, "wb") as f:

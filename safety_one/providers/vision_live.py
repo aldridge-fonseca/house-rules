@@ -40,7 +40,7 @@ from safety_one.providers.fireworks import (
 )
 from safety_one.types import Message, Verdict
 
-# --- verified pricing / shape facts (WAVE3_BRIEF.md; firectl shape match) ---
+# --- verified pricing / shape facts (Fireworks pricing page, checked 2026-11-02; firectl shape match) ---
 SUPER_VL_MODEL = "accounts/fireworks/models/nvidia-nemotron-3p5-super-vl-120b-a12b-nvfp4"
 SUPER_VL_SHAPE = "accounts/fireworks/deploymentShapes/f3m8sxu2"  # 4x NVIDIA_B200_180GB, FP4, MINIMAL
 SUPER_VL_GPUS = 4
@@ -52,7 +52,7 @@ LIGHTNING_MODEL = "accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b"
 LIGHTNING_IN_PER_1M = 0.05                           # serverless, https://fireworks.ai/pricing
 LIGHTNING_OUT_PER_1M = 0.20
 
-# Text-arm fallback when serverless Lightning is wedged (WAVE3_BRIEF.md).
+# Text-arm fallback when serverless Lightning is wedged (Fireworks pricing page, checked 2026-11-02).
 ULTRA_MODEL = "accounts/fireworks/models/nemotron-3-ultra-nvfp4"
 ULTRA_IN_PER_1M = 0.60                               # serverless, https://fireworks.ai/pricing
 ULTRA_OUT_PER_1M = 2.40

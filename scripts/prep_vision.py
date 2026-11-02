@@ -31,7 +31,7 @@ Usage:
   python3 scripts/prep_vision.py --nvidia-bundle # also stream images.tar.gz (~3.9GB)
   HF_TOKEN=… python3 scripts/prep_vision.py --vlguard
 
-No paid calls. Reads HF_TOKEN from env or safety-one/.env only for the gated
+No paid calls. Reads HF_TOKEN from env or `.env` at repo root only for the gated
 VLGuard zip. Disk target for data/vision/ is well under the 300 MB slice.
 """
 

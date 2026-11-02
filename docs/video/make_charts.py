@@ -86,6 +86,16 @@ FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 BRAND = "Built on Fireworks AI · NVIDIA Nemotron"
 
+# Always-on serving economics, from receipts/config:
+# - $13/h per 1x B200 dedicated deployment (results/nvidia-v1/ours_timing.json note)
+# - 730 h/month -> one always-on replica floors at $9,490/mo regardless of volume
+# - 3,340 calls in 49.3 s on 1 replica -> ~67.7 msg/s -> ~178M msgs/mo capacity
+#   at full utilization (ours_timing.json: nvidia_test wall_s 49.3, model_calls 3340)
+GPU_RATE_USD_H = 13.0
+HOURS_PER_MONTH = 730.0
+ALWAYS_ON_FLOOR_USD_MO = GPU_RATE_USD_H * HOURS_PER_MONTH  # $9,490
+REPLICA_MSGS_PER_MO = 3340 / 49.3 * HOURS_PER_MONTH * 3600  # ~178M
+
 
 def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(FONT_BOLD if bold else FONT_REG, size)
@@ -262,6 +272,7 @@ def collect_systems() -> dict[str, dict]:
             "p50_ms": round(float(m["p50_ms"]), 1),
             "p95_ms": round(float(m["p95_ms"]), 1),
             "usd_per_1m_msgs": float(m["usd_per_1m_msgs"]),
+            "token_usd_per_1m": 1e6 * float(m.get("token_usd", 0.0)) / m["n"],
             "partial": False,
             "source": "results/nvidia-v1/ours_summary.json → systems.{}.nvidia_test".format(key),
             "ci_source": f"bootstrap macro-F1 on {OURS_JSONL[key].relative_to(ROOT)} (nv-test ids; refusal=wrong)",
@@ -286,6 +297,7 @@ def collect_systems() -> dict[str, dict]:
         pairs = scored_pairs(rows)
         lo, hi = bootstrap_f1_ci(pairs)
         m["f1_ci95"] = [round(lo, 1), round(hi, 1)] if lo is not None else None
+        m["token_usd_per_1m"] = m["usd_per_1m_msgs"]
         m["label"] = FULL[key]
         m["short"] = SHORT[key]
         m["source"] = f"results/nvidia-v1-frontier/{fname} (refusal=wrong; $/1M = verdicts + ledger refusals ÷ n)"
@@ -373,8 +385,8 @@ def draw_quality_vs_cost(systems: dict[str, dict]) -> Path:
         draw.text((lx, ly), tag, font=font(26, bold=s.get("highlight")), fill=color)
 
     foot = (
-        f"Ours = GPU rental amortized at full utilization. Refusals scored as wrong. "
-        f"95% bootstrap CI on macro-F1. {partial_note(systems)}"
+        f"Ours = marginal $/1M at full utilization (always-on floor ≈$9,490/mo). "
+        f"Refusals scored as wrong. 95% bootstrap CI. {partial_note(systems)}"
     ).rstrip()
     footer(draw, foot)
     path = OUT / "quality_vs_cost.png"
@@ -391,48 +403,115 @@ def money(v: float) -> str:
 
 
 def draw_monthly_bill(systems: dict[str, dict]) -> Path:
+    """Monthly bill vs volume. Ours keeps the always-on floor of one dedicated
+    B200 replica ($13/h × 730 h = $9,490/mo) — the $56/1M figure is the
+    marginal cost at saturation, not an attainable low-volume bill."""
     img, draw = new_canvas()
-    title(draw, "Monthly bill at 100M messages")
+    title(draw, "Monthly bill vs message volume")
     draw.text(
         (64, 110),
-        "USD / month = ($ / 1M messages) × 100   ·   same NVIDIA-policy receipts",
-        font=font(28),
+        "USD / month (log–log) · same receipts · House Rules = 1 always-on B200 "
+        "($13/h → $9,490/mo floor) + escalation tokens",
+        font=font(26),
         fill=hex_rgb(MUTED),
     )
 
-    left, right, top, bottom = 280, W - 100, 200, H - 140
-    bills = {k: systems[k]["usd_per_1m_msgs"] * 100 for k in ORDER if systems[k]["n"]}
-    vmax = max(bills.values()) * 1.08
+    floor = ALWAYS_ON_FLOOR_USD_MO
+    tok = systems["final"]["token_usd_per_1m"]  # ~$2.87/1M (Ultra escalation)
+    rates = {k: systems[k]["usd_per_1m_msgs"] for k in ORDER if systems[k]["n"]}
+    cap = REPLICA_MSGS_PER_MO
 
-    n = len(bills)
-    gap = 36
-    bar_h = ((bottom - top) - gap * (n - 1)) / n
-    y = top
-    for key in ORDER:
-        if key not in bills:
-            continue
-        s = systems[key]
-        bill = bills[key]
-        bw = max(12.0, (right - left) * (bill / vmax))  # min width so tiny bills stay visible
+    def ours_always_on(v: float) -> float:
+        return floor * (1 if v <= cap else 2) + tok * v / 1e6
+
+    def per_token(rate: float):
+        return lambda v: rate * v / 1e6
+
+    series = [  # (key, bill_usd(volume), label, dashed)
+        ("final", ours_always_on, "House Rules — always-on replica", False),
+        ("final", per_token(rates["final"]), "House Rules — marginal @ saturation", True),
+        ("ultra-untuned", per_token(rates["ultra-untuned"]), "Ultra 550B — serverless", False),
+        ("frontier-router-a", per_token(rates["frontier-router-a"]), "GPT-6.1 Sol — token router", False),
+        ("frontier-router-b", per_token(rates["frontier-router-b"]), "Opus 5.5 — token router", False),
+    ]
+
+    left, right, top, bottom = 200, W - 140, 210, H - 170
+    xmin, xmax = 3e5, 3e8       # messages / month
+    ymin, ymax = 4e2, 3e6       # USD / month
+
+    def x_of(v: float) -> float:
+        return left + (math.log10(v) - math.log10(xmin)) / (math.log10(xmax) - math.log10(xmin)) * (right - left)
+
+    def y_of(b: float) -> float:
+        return bottom - (math.log10(b) - math.log10(ymin)) / (math.log10(ymax) - math.log10(ymin)) * (bottom - top)
+
+    # Axes + grid
+    draw.rectangle([left, top, right, bottom], outline=hex_rgb(INK), width=2)
+    for b in (1e3, 2e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, 1e6, 2e6):
+        if ymin <= b <= ymax:
+            y = y_of(b)
+            draw.line([(left, y), (right, y)], fill=hex_rgb(GRID), width=1)
+            lab = f"${b/1e3:.0f}K" if b < 1e6 else f"${b/1e6:.0f}M"
+            draw.text((left - 62, y - 13), lab, font=font(22), fill=hex_rgb(MUTED))
+    for v in (5e5, 1e6, 2e6, 5e6, 1e7, 2e7, 5e7, 1e8, 2e8):
+        x = x_of(v)
+        draw.line([(x, top), (x, bottom)], fill=hex_rgb(GRID), width=1)
+        lab = f"{v/1e6:g}M"
+        draw.text((x - 20, bottom + 10), lab, font=font(22), fill=hex_rgb(MUTED))
+    draw.text((left - 10, top - 44), "$ / month", font=font(24, bold=True), fill=hex_rgb(INK))
+    draw.text((right - 300, bottom + 44), "messages / month →", font=font(24, bold=True), fill=hex_rgb(INK))
+
+    # Series polylines (log-sampled so curves stay smooth)
+    vs = [xmin * (xmax / xmin) ** (i / 240) for i in range(241)]
+    for key, fn, label, dashed in series:
         color = hex_rgb(COLORS[key])
-        y1 = y + bar_h
-        draw.rounded_rectangle([left, y, left + bw, y1], radius=8, fill=color)
-        if s.get("highlight"):
-            draw.rounded_rectangle([left, y, left + bw, y1], radius=8, outline=hex_rgb(INK), width=4)
-        draw.text((64, y + bar_h / 2 - 16), s["short"], font=font(30, bold=s.get("highlight")), fill=hex_rgb(INK))
-        label = money(bill) + (" / mo" if bill < 1e6 else "")
-        # put label inside bar if wide enough else outside
-        tw = draw.textlength(label, font=font(30, bold=True))
-        if bw > tw + 40:
-            draw.text((left + bw - tw - 16, y + bar_h / 2 - 16), label, font=font(30, bold=True), fill=(255, 255, 255))
+        pts = [(x_of(v), y_of(max(fn(v), ymin * 1.001))) for v in vs]
+        if dashed:
+            # dashed polyline: short segments with gaps
+            step = 6
+            for i in range(0, len(pts) - step, step * 2):
+                draw.line([pts[i], pts[i + step]], fill=color, width=3)
         else:
-            draw.text((left + bw + 16, y + bar_h / 2 - 16), label, font=font(30, bold=True), fill=color)
-        y = y1 + gap
+            draw.line(pts, fill=color, width=6 if key == "final" else 4)
+
+    # Legend (top-left is the empty zone: every line rises left→right)
+    lx, ly = left + 30, top + 14
+    for key, _fn, label, dashed in series:
+        color = hex_rgb(COLORS[key])
+        if dashed:
+            draw.line([(lx, ly + 12), (lx + 24, ly + 12)], fill=color, width=3)
+            draw.line([(lx + 36, ly + 12), (lx + 60, ly + 12)], fill=color, width=3)
+        else:
+            draw.line([(lx, ly + 12), (lx + 60, ly + 12)], fill=color, width=6 if key == "final" else 4)
+        draw.text((lx + 74, ly), label, font=font(22), fill=hex_rgb(INK))
+        ly += 34
+
+    # Honest-region notes (placed in line-free zones)
+    draw.text(
+        (left + 40, top + 215),
+        "below ≈5.2M msgs/mo: GPT-6.1 Sol is cheaper than an always-on House Rules replica",
+        font=font(24, bold=True),
+        fill=hex_rgb(COLORS["frontier-router-a"]),
+    )
+
+    # Break-even volumes vs the always-on floor: floor = (rate − tok) × v / 1e6
+    be_opus = floor * 1e6 / (rates["frontier-router-b"] - tok)
+    be_gpt = floor * 1e6 / (rates["frontier-router-a"] - tok)
+    be_ultra = floor * 1e6 / (rates["ultra-untuned"] - tok)
+    for v, txt, col in (
+        (be_opus, "vs Opus ≈1.57M", hex_rgb(COLORS["frontier-router-b"])),
+        (be_gpt, "vs GPT ≈5.2M", hex_rgb(COLORS["frontier-router-a"])),
+        (be_ultra, "Ultra cheaper below ≈90M", hex_rgb(COLORS["ultra-untuned"])),
+    ):
+        x = x_of(v)
+        draw.line([(x, top), (x, bottom)], fill=col, width=2)
+        draw.text((x + 8, top + 180), txt, font=font(20), fill=col)
+        draw.ellipse([x - 7, y_of(ours_always_on(v)) - 7, x + 7, y_of(ours_always_on(v)) + 7], fill=col)
 
     footer(
         draw,
-        f"Ours = GPU rental amortized at full utilization. {partial_note(systems)}"
-        f"House Rules ≈ {money(bills['final'])}/mo vs Opus ≈ {money(bills['frontier-router-b'])}/mo.",
+        f"{partial_note(systems)}Break-evens ≈1.57M (Opus) · ≈5.2M (GPT); "
+        f">178M msgs/mo needs 2 replicas.",
     )
     path = OUT / "monthly_bill.png"
     img.save(path, "PNG")
@@ -444,7 +523,7 @@ def draw_latency(systems: dict[str, dict]) -> Path:
     title(draw, "Latency — p50 and p95")
     draw.text(
         (64, 110),
-        "Client-side wall ms per message (concurrency 48; includes escalation round-trips)",
+        "Client-side wall ms per message (ours at concurrency 48; frontier concurrency not recorded)",
         font=font(28),
         fill=hex_rgb(MUTED),
     )
@@ -487,9 +566,10 @@ def draw_latency(systems: dict[str, dict]) -> Path:
 
     footer(
         draw,
-        f"{partial_note(systems)}House Rules p50 = {systems['final']['p50_ms']:.0f} ms; "
-        f"GPT p50 {systems['frontier-router-a']['p50_ms']:,.0f} ms, "
-        f"Opus p50 {systems['frontier-router-b']['p50_ms']:,.0f} ms.",
+        f"{partial_note(systems)}Frontier via token router; answered rows only. "
+        f"p50: ours {systems['final']['p50_ms']:.0f} · "
+        f"GPT {systems['frontier-router-a']['p50_ms']:,.0f} · "
+        f"Opus {systems['frontier-router-b']['p50_ms']:,.0f} ms.",
     )
     path = OUT / "latency.png"
     img.save(path, "PNG")
@@ -545,7 +625,7 @@ def rasterize_svg(svg: Path, out_png: Path, size: tuple[int, int]) -> bool:
 html,body{{margin:0;background:#FAFAF8;width:{size[0]}px;height:{size[1]}px;overflow:hidden}}
 .wrap{{display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:80px 60px 60px;box-sizing:border-box;flex-direction:column}}
 h1{{font-family:DejaVu Sans,Arial,sans-serif;font-size:48px;margin:0 0 28px;color:#1A1A1A}}
-img{{max-width:100%;max-height:820px}}
+img{{width:1632px;max-width:92%;height:auto}}
 .bar{{position:fixed;top:0;left:0;right:0;height:10px;background:#76B900}}
 </style></head><body><div class="bar"></div>
 <div class="wrap"><h1>How House Rules decides</h1>
@@ -600,16 +680,44 @@ def draw_architecture_card() -> Path:
 
 
 def write_numbers(systems: dict[str, dict]) -> tuple[Path, Path]:
+    tok = systems["final"]["token_usd_per_1m"]
+    floor = ALWAYS_ON_FLOOR_USD_MO
+    cap = REPLICA_MSGS_PER_MO
     payload = {
         "dataset": "nvidia_test (held-out NVIDIA Nemotron Content Safety 3.5 policy)",
-        "dataset_n_target": 3340,
+        "dataset_n": 3340,
         "refusal_policy": "refusals and errors scored as incorrect (label flipped vs gold)",
-        "cost_footnote": "Ours = GPU rental amortized at full utilization ($13/h × wall ÷ calls). Ultra/frontier = measured tokens.",
+        "cost_footnote": (
+            "Ours $/1M = marginal cost at full utilization ($13/h × measured wall ÷ calls) "
+            "+ measured Ultra escalation tokens. One always-on B200 replica floors at "
+            f"${floor:,.0f}/mo regardless of volume (≈{cap/1e6:.0f}M msgs/mo capacity at "
+            "saturation). Frontier arms ran via a third-party OpenAI-compatible token "
+            "router at the router's rates (baselines/prices.yaml); latency over answered "
+            "rows only, gateway hop included."
+        ),
+        "always_on": {
+            "floor_usd_per_month_per_replica": floor,
+            "gpu_rate_usd_h": GPU_RATE_USD_H,
+            "hours_per_month": HOURS_PER_MONTH,
+            "escalation_tokens_usd_per_1m": round(tok, 2),
+            "replica_capacity_msgs_per_month": round(cap),
+            "bill_usd_per_month": {
+                "1m": round(floor + tok * 1),
+                "10m": round(floor + tok * 10),
+                "100m": round(floor + tok * 100),
+            },
+            "breakeven_vs_opus_msgs_per_month": round(
+                floor * 1e6 / (systems["frontier-router-b"]["usd_per_1m_msgs"] - tok)),
+            "breakeven_vs_gpt_msgs_per_month": round(
+                floor * 1e6 / (systems["frontier-router-a"]["usd_per_1m_msgs"] - tok)),
+            "ultra_serverless_cheaper_below_msgs_per_month": round(
+                floor * 1e6 / (systems["ultra-untuned"]["usd_per_1m_msgs"] - tok)),
+        },
         "systems": {},
         "charts": {
             "quality_vs_cost.png": "macro_f1 vs usd_per_1m_msgs (log x), 95% bootstrap CI on F1",
-            "monthly_bill.png": "usd_per_1m_msgs × 100 (100M messages/month)",
-            "latency.png": "p50_ms and p95_ms",
+            "monthly_bill.png": "bill vs volume (log-log): always-on B200 floor, marginal-at-saturation line, break-evens vs GPT/Opus/Ultra",
+            "latency.png": "p50_ms and p95_ms (frontier via token router, answered rows only)",
             "title_card.png": "House Rules — Your safety policy, enforced.",
             "architecture_card.png": "from docs/img/architecture.svg",
         },
@@ -625,6 +733,8 @@ def write_numbers(systems: dict[str, dict]) -> tuple[Path, Path]:
             "macro_f1": s["macro_f1"],
             "f1_ci95": s.get("f1_ci95"),
             "usd_per_1m_msgs": s["usd_per_1m_msgs"],
+            "usd_per_1m_msgs_basis": "marginal (full-utilization amortized GPU + measured tokens)"
+                if key in ("final", "nano-untuned") else "measured tokens",
             "monthly_bill_100m": round(s["usd_per_1m_msgs"] * 100),
             "p50_ms": s["p50_ms"],
             "p95_ms": s["p95_ms"],
@@ -644,12 +754,24 @@ def write_numbers(systems: dict[str, dict]) -> tuple[Path, Path]:
         "",
         "Regenerate charts + this file: `.venv/bin/python docs/video/make_charts.py`",
         "",
-        "Dataset: `nvidia_test` held-out NVIDIA-policy rows (target n=3,340).",
-        "Refusals/errors scored as **incorrect**. Cost footnote: ours = GPU rental amortized at full utilization.",
-        "Frontier $/1M = (verdict receipt cost + spend-ledger cost of refusal rows) ÷ all n (`results/spend.json`).",
-        "Bill @100M = $/1M × 100.",
+        "Dataset: `nvidia_test` held-out NVIDIA-policy rows (n=3,340).",
+        "Refusals/errors scored as **incorrect**.",
+        "Ours $/1M = **marginal** cost at full utilization ($13/h B200 × measured wall ÷ calls) "
+        "+ measured Ultra-escalation tokens.",
+        "Frontier $/1M = (verdict receipt cost + spend-ledger cost of refusal rows) ÷ all n "
+        "(`results/spend.json`); frontier arms ran via a third-party OpenAI-compatible **token "
+        "router** at router rates (`baselines/prices.yaml`) — latency over answered rows only.",
+        "`Bill @100M` below = marginal $/1M × 100 — **not** a real monthly bill for House Rules:",
         "",
-        "| System | n | Macro-F1 (95% CI) | $/1M msgs | Bill @100M/mo | p50 ms | p95 ms | refused % | Source |",
+        "**House Rules always-on bill** (1 dedicated B200 replica, $13/h → "
+        f"${floor:,.0f}/mo floor + ${tok:.2f}/1M escalation tokens): "
+        f"1M msgs/mo → ${floor + tok:,.0f} · 10M → ${floor + tok * 10:,.0f} · "
+        f"100M → ${floor + tok * 100:,.0f} (1 replica ≈{cap / 1e6:.0f}M msgs/mo at "
+        "saturation; >178M needs 2 replicas). "
+        "Break-even vs Opus ≈1.57M msgs/mo, vs GPT ≈5.2M — **below ~5.2M msgs/mo "
+        "GPT-6.1 Sol is cheaper**; Ultra serverless is cheaper below ≈90M.",
+        "",
+        "| System | n | Macro-F1 (95% CI) | $/1M msgs (marginal) | Bill @100M/mo | p50 ms | p95 ms | refused % | Source |",
         "|---|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
     for key in ORDER:
@@ -669,8 +791,8 @@ def write_numbers(systems: dict[str, dict]) -> tuple[Path, Path]:
             "## Chart files",
             "",
             "- `quality_vs_cost.png` — scatter, log $ / 1M vs macro-F1",
-            "- `monthly_bill.png` — bar chart at 100M messages/month",
-            "- `latency.png` — p50 / p95 bars",
+            "- `monthly_bill.png` — bill vs volume (log–log): always-on floor, marginal-at-saturation, break-evens",
+            "- `latency.png` — p50 / p95 bars (frontier via token router, answered rows only)",
             "- `title_card.png` — title",
             "- `architecture_card.png` — from `docs/img/architecture.svg`",
             "",

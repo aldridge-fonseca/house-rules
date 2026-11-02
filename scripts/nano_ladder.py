@@ -100,17 +100,19 @@ def _build(name: str):
     cfg.setdefault("router", {})["emoji_route"] = "specialist"
     model_env = "FIREWORKS_MODEL"
     if name == "final-rawtext":
-        # Round 6 ablation: `full` with the clean-up (stage-0 normalisation)
-        # output NOT handed to the models; they see the original text.
+        # Ablation: `full` with the clean-up (stage-0 normalisation) output NOT
+        # handed to the models; they see the original text.
         cfg["router"]["provider_text"] = "raw"
         name = "full"
     elif name == "nano-untuned":
-        # Round 6 baseline: `+router` wiring (clean-up + rules + router, no
-        # escalation) on the BASE Nano deployment (no adapter), same prompt.
+        # Baseline: `+router` wiring (clean-up + rules + router, no escalation)
+        # on the BASE Nano deployment (no adapter). Uses TRAIN_SYSTEM_PROMPT
+        # (one-line; taxonomy undefined in the prompt) — not the frontier
+        # moderation_prompt() and not Ultra's label-only Fireworks prompt.
         model_env = "NANO_BASE_MODEL"
         name = "+router"
     if name == "calib-escalate-all":
-        # DEV-ONLY calibration arm (round 5): `full` wiring with the gate band
+        # DEV-ONLY calibration arm: `full` wiring with the gate band
         # [0, 1] and no category overrides, so every model-routed row records
         # its pre-gate specialist P(unsafe) (raw.pre_escalation) AND the Ultra
         # verdict. scripts/calibrate_gate.py then searches threshold + band.

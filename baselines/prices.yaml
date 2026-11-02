@@ -32,7 +32,7 @@ router:
   # Router's own machine-readable price list, fetched 2026-11-02. It is a
   # ratio-priced gateway: input_per_million = model_ratio x $2, output =
   # input x completion_ratio. The conversion was verified against two models
-  # whose direct rates we already verified today (gpt-6-astra ratio 5 -> $10/1M,
+  # whose direct rates were verified 2026-11-02 (gpt-6-astra ratio 5 -> $10/1M,
   # gemini-4-argon ratio 1 -> $2/1M, both matching the frontier table above).
   source_url: https://api.tokenrouter.com/api/pricing
   models:

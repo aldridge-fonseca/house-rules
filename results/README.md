@@ -3,7 +3,7 @@
 Only the final reported runs live here: `nvidia-v1/` (our systems on the NVIDIA policy
 task) and `nvidia-v1-frontier/` (frontier-model baselines on `nvidia_test`). Earlier
 smoke/mock/dev runs are intentionally not published. Scripts that still default to
-`results/frozen-v1` or `results/vision-r4` regenerate an earlier internal run whose
+`results/frozen-v1` or `results/vision` regenerate an earlier internal run whose
 receipts are **not published**; prefer `results/nvidia-v1` for the submission figures.
 
 Frontier **disguised_v1** scores (GPT / Opus) come from an earlier run; per-case receipts
@@ -17,7 +17,7 @@ are **not published** and are excluded from asserted numbers (`final_headline.js
 | `spend.json` | 2,878 entries | Opus 5.5 per-row billed cost on `nvidia_test` (measured). Used by `scripts/stats_vs_frontier.py` / `scripts/final_headline.py` to bill **368 of 434** Opus refusals ($1.67). GPT refusals are HTTP-level blocks with no matching ledger cost and are counted at $0 (conservative in GPT's favor). | recorded during the frontier run | do not invent; ledger is the source of truth |
 | `nvidia-v1/OURS_SUMMARY.md` | — | headline tables, paired + clustered notes, method | curated from receipts; numbers match `ours_summary.json` | `python scripts/nvidia_summary.py` (JSON); re-read this MD |
 | `nvidia-v1/ours_summary.json` | — | all slices + row-level paired tests | `scripts/nvidia_summary.py` | same |
-| `nvidia-v1/final_headline.json` | — | headline metrics incl. frontier comparison slots | `scripts/final_headline.py` | same (owned by that script's maintainer) |
+| `nvidia-v1/final_headline.json` | — | headline metrics incl. frontier comparison slots | `scripts/final_headline.py` | same |
 | `nvidia-v1/ours_timing.json` | — | GPU-time allocation inputs for $/1M-msgs | recorded with the eval runs | — |
 | `nvidia-v1/final.jsonl` | 5,562 | full tuned system on `nvidia_test` (3,340) + `disguised_v1` (2,222) | `scripts/run_eval.py` + compact | paid re-run |
 | `nvidia-v1/nano-untuned.jsonl` | 5,562 | base Nano 30B, no adapter | same | paid re-run |

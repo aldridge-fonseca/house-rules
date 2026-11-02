@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="430" font-family="Arial, sans-serif" viewBox="0 0 960 430">
-  <rect width="960" height="430" fill="white"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="985" height="430" font-family="Arial, sans-serif" viewBox="0 0 985 430">
+  <rect width="985" height="430" fill="white"/>
   <text x="20" y="26" font-size="18" font-weight="bold" fill="#1A1A1A">House Rules</text>
   <text x="128" y="26" font-size="13" fill="#666">— deterministic policy pipeline; every model call runs on Fireworks AI</text>
   <defs>
@@ -30,10 +30,10 @@
   <text x="590" y="215" font-size="11" text-anchor="middle" fill="#444">deterministic</text>
 
   <!-- Lanes -->
-  <rect x="690" y="30" width="250" height="70" rx="8" fill="#eaf3dd" stroke="#76B900"/>
-  <text x="815" y="55" font-size="13" text-anchor="middle" font-weight="bold">Vision lane</text>
-  <text x="815" y="75" font-size="11" text-anchor="middle" fill="#444">Nemotron 3.5 Super VL 120B</text>
-  <text x="815" y="90" font-size="11" text-anchor="middle" fill="#444">(wired on Fireworks on-demand — not evaluated)</text>
+  <rect x="690" y="30" width="250" height="70" rx="8" fill="#f4f4f4" stroke="#76B900" stroke-dasharray="5,3"/>
+  <text x="815" y="55" font-size="13" text-anchor="middle" font-weight="bold" fill="#555">Vision lane (future work)</text>
+  <text x="815" y="75" font-size="11" text-anchor="middle" fill="#666">Nemotron 3.5 Super VL 120B</text>
+  <text x="815" y="90" font-size="11" text-anchor="middle" fill="#666">(wired on Fireworks on-demand — not evaluated)</text>
 
   <rect x="690" y="125" width="250" height="70" rx="8" fill="#d5e8b8" stroke="#76B900" stroke-width="2"/>
   <text x="815" y="150" font-size="13" text-anchor="middle" font-weight="bold">Specialist lane (default)</text>
@@ -69,12 +69,17 @@
   <line x1="645" y1="180" x2="687" y2="65" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
   <line x1="645" y1="200" x2="687" y2="160" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
   <line x1="645" y1="220" x2="687" y2="255" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
-  <path d="M815 195 L815 290 Q815 320 780 335 L718 352" stroke="#555" stroke-width="2" fill="none" marker-end="url(#arr)"/>
-  <path d="M700 65 Q660 65 660 110 L652 330 Q650 345 640 348" stroke="#bbb" stroke-width="1.5" fill="none" stroke-dasharray="4,3"/>
+
+  <!-- Lane outputs merge in the right channel, then drop into the gate's top edge -->
+  <line x1="940" y1="65" x2="963" y2="65" stroke="#bbb" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="940" y1="160" x2="963" y2="160" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="940" y1="255" x2="963" y2="255" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+  <path d="M963 65 L963 312 L640 312 L640 330" stroke="#555" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+
   <line x1="535" y1="365" x2="328" y2="365" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
   <line x1="715" y1="365" x2="757" y2="365" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
-  <path d="M760 400 Q600 425 330 402 L268 400" stroke="#e0a800" stroke-width="1.5" fill="none" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+  <path d="M760 400 Q545 412 305 400" stroke="#e0a800" stroke-width="1.5" fill="none" stroke-dasharray="4,3" marker-end="url(#arr)"/>
 
   <!-- Footer -->
-  <text x="480" y="422" font-size="11" text-anchor="middle" fill="#888">Green = open NVIDIA models on Fireworks AI · Built on Fireworks AI + NVIDIA Nemotron. Clear-confidence lanes return directly; only gray-zone rows pay for escalation.</text>
+  <text x="492" y="422" font-size="11" text-anchor="middle" fill="#888">Green = open NVIDIA models on Fireworks AI · Built on Fireworks AI + NVIDIA Nemotron. Clear-confidence lanes return directly; only gray-zone rows pay for escalation.</text>
 </svg>

@@ -102,7 +102,7 @@ ensure_dataset() {
 if [ "$EXECUTE" -eq 0 ]; then
   echo "=== DRY RUN (pass --execute to run) ==="
 else
-  : "${FIREWORKS_API_KEY:?set FIREWORKS_API_KEY (source safety-one/.env)}"
+  : "${FIREWORKS_API_KEY:?set FIREWORKS_API_KEY (source .env)}"
   : "${FIREWORKS_ACCOUNT_ID:?set FIREWORKS_ACCOUNT_ID}"
 fi
 

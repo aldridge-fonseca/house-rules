@@ -74,7 +74,7 @@ systems:
     backend: frontier
     provider: openai               # FrontierProvider("openai")
     env_key: OPENAI_API_KEY
-    description: GPT-6 Astra, identical-prompt closed-frontier baseline.
+    description: GPT-6 Astra closed-frontier baseline (full policy moderation_prompt; not run in shipped results).
     mock:
       base_latency_ms: 650
       per_char_ms: 2.0
@@ -90,7 +90,7 @@ systems:
     backend: frontier
     provider: anthropic            # FrontierProvider("anthropic")
     env_key: ANTHROPIC_API_KEY
-    description: Claude Fable 5.1, identical-prompt closed-frontier baseline.
+    description: Claude Fable 5.1 closed-frontier baseline (full policy moderation_prompt; not run in shipped results).
     mock:
       base_latency_ms: 700
       per_char_ms: 2.0
@@ -106,7 +106,7 @@ systems:
     backend: frontier
     provider: gemini               # FrontierProvider("gemini")
     env_key: GEMINI_API_KEY
-    description: Gemini 4 Argon, identical-prompt closed-frontier baseline.
+    description: Gemini 4 Argon closed-frontier baseline (full policy moderation_prompt; not run in shipped results).
     mock:
       base_latency_ms: 550
       per_char_ms: 1.5
@@ -156,7 +156,7 @@ systems:
     backend: frontier_router       # RouterFrontierProvider(model_env=...)
     env_key: ROUTER_API_KEY
     model_env: FRONTIER_MODEL
-    description: Closed-frontier model via the OpenAI-compatible token router (FRONTIER_MODEL), identical prompt.
+    description: Closed-frontier model via the OpenAI-compatible token router (FRONTIER_MODEL); full policy moderation_prompt (not the NVIDIA label-only prompt).
     mock:
       base_latency_ms: 650
       per_char_ms: 2.0
@@ -253,7 +253,7 @@ systems:
     reasoning_effort: "none"         # without this the model reasons at length (verified 2026-11-02)
     max_tokens: 256
     timeout_s: 300                 # serverless queueing observed >90s at event load (2026-11-02)
-    price:                         # serverless $/1M tokens, per WAVE3_BRIEF (verified 2026-11-02)
+    price:                         # serverless $/1M tokens (Fireworks pricing page, checked 2026-11-02)
       input_per_million_usd: 0.05
       output_per_million_usd: 0.20
     description: NVIDIA Nemotron Lightning 3.5 30B-A3B, untuned zero-shot baseline; cheap serverless text lane.
@@ -274,7 +274,7 @@ systems:
     reasoning_effort: "none"         # keep the zero-shot lane deterministic; escalate on gray zone instead
     max_tokens: 256
     timeout_s: 120
-    price:                         # serverless $/1M tokens, per WAVE3_BRIEF (verified 2026-11-02)
+    price:                         # serverless $/1M tokens (Fireworks pricing page, checked 2026-11-02)
       input_per_million_usd: 0.60
       output_per_million_usd: 2.40
     description: NVIDIA Nemotron 3 Ultra 550B-A55B NVFP4, untuned zero-shot baseline; also the pipeline escalation model.

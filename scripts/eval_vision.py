@@ -159,7 +159,7 @@ def main(argv: list[str] | None = None) -> int:
                     help="per-request timeout (s) for the serverless text arm")
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args(argv)
-    _registry._load_env_file()  # FIREWORKS_* from safety-one/.env (gitignored)
+    _registry._load_env_file()  # FIREWORKS_* from `.env` at repo root (gitignored)
 
     data_paths = [(Path(p) if Path(p).is_absolute() else ROOT / p)
                   for p in (args.data or DEFAULT_DATA)]

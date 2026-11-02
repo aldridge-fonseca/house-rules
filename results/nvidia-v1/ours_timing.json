@@ -1,9 +1,9 @@
 {
- "_note": "gpu_per_call_usd = 13.0 $/h (1x B200) x run wall-clock / model calls in that run; runs on one deployment were sequential at concurrency 48. Reused frozen-v1 receipts use the frozen-v1 ladder allocation.",
+ "_note": "gpu_per_call_usd = 13.0 $/h (1x B200) x run wall-clock / model calls in that run; runs on one deployment were sequential at concurrency 48. Reused earlier frozen-v1 receipts use that run's GPU allocation (timing wall-clock not shipped).",
  "final": {
   "disguised_v1": {
    "gpu_per_call_usd": 6.0217400255280596e-05,
-   "source": "results/frozen-v1 (r4 ladder)"
+   "source": "earlier frozen-v1 run (timing not shipped)"
   },
   "nvidia_test": {
    "deployment": "qd2gx85j",

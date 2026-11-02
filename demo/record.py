@@ -58,10 +58,10 @@ from pathlib import Path
 import backends
 
 DEMO = Path(__file__).resolve().parent
-SAFETY_ONE_ROOT = DEMO.parent
-IMAGE_ROOT = SAFETY_ONE_ROOT / "data" / "vision" / "images"
+REPO_ROOT = DEMO.parent
+IMAGE_ROOT = REPO_ROOT / "data" / "vision" / "images"
 
-# `full` first: NANO_SUMMARY round-5 verdict keeps it as the headline (full-cal scored lower).
+# `full` first: headline system in ours_summary (full-cal scored lower).
 OURS_CANDIDATES = ["full", "full-cal", "+escalation", "specialist-only"]
 FRONTIER_CANDIDATES = ["frontier-router-a", "frontier-router", "frontier-gpt",
                        "frontier-claude", "frontier-gemini", "frontier",
@@ -82,7 +82,7 @@ def load_cases(path):
 
 def _resolve_run(arg):
     p = Path(arg)
-    for cand in (p, SAFETY_ONE_ROOT / arg, SAFETY_ONE_ROOT / "results" / arg,
+    for cand in (p, REPO_ROOT / arg, REPO_ROOT / "results" / arg,
                  Path.cwd() / arg):
         if cand.is_dir():
             return cand.resolve()

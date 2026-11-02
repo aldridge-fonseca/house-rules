@@ -1,6 +1,6 @@
 """Command line for the named-system registry.
 
-From safety-one/:
+From repo root:
 
     python -m safety_one.cli list-systems
     python -m safety_one.cli list-systems --json
@@ -8,7 +8,7 @@ From safety-one/:
     python -m safety_one.cli classify "..." --system frontier-gpt --mode mock --json
 
 Mode "auto" (default) uses the real provider only when its API key is in the
-environment (or safety-one/.env); otherwise a deterministic mock answers, so
+environment (or `.env`); otherwise a deterministic mock answers, so
 everything here works offline.
 """
 from __future__ import annotations

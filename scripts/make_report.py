@@ -3,7 +3,7 @@
 
     python scripts/make_report.py results/MOCK-integration-e2e
     python scripts/make_report.py results/nvidia-v1 --png-dir docs/img
-    # results/frozen-v1 / results/vision-r4 regenerate an earlier internal run
+    # results/frozen-v1 / results/vision regenerate an earlier internal run
     # whose receipts are not published; prefer nvidia-v1 for submission figures.
 
 Reads receipt JSONL (preferred) or summary.json produced by safety_one.eval,

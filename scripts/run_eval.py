@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run resumable safety evaluation. From safety-one/: python scripts/run_eval.py"""
+"""Run resumable safety evaluation. From repo root: python scripts/run_eval.py"""
 from __future__ import annotations
 
 import argparse

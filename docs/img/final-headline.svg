@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="560" font-family="Arial, sans-serif">
-<rect width="1100" height="560" fill="white"/><rect width="1100" height="8" fill="#76B900"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="600" font-family="Arial, sans-serif">
+<rect width="1100" height="600" fill="white"/><rect width="1100" height="8" fill="#76B900"/>
 <text x="550" y="44" font-size="24" text-anchor="middle">Content moderation under NVIDIA safety policy — NVIDIA Nemotron on Fireworks AI</text>
 <text x="330" y="90" font-size="17" font-weight="bold">Held-out NVIDIA policy test (3,340 rows) — macro-F1</text>
 <text x="320" y="125" font-size="15" text-anchor="end">Ours (tuned NVIDIA Nano system)</text>
@@ -31,4 +31,7 @@
 <text x="336" y="485" font-size="14" fill="#999">receipts not published</text>
 <text x="320" y="525" font-size="15" text-anchor="end">Claude Opus 5.5</text>
 <text x="336" y="525" font-size="14" fill="#999">receipts not published</text>
-<text x="330" y="548" font-size="12" fill="#555">Bars start at 50. Refusals scored as wrong. Green = NVIDIA on Fireworks, grey = closed frontier.</text></svg>
+<text x="330" y="558" font-size="12" fill="#555">Bars start at 50. Refusals scored as wrong. Green = NVIDIA on Fireworks, grey = closed frontier.</text>
+<text x="330" y="574" font-size="12" fill="#555">NVIDIA baselines are zero-shot with no policy text (policy-blind); frontier arms got the full policy prompt.</text>
+<text x="330" y="590" font-size="12" fill="#555">Disguised panel: House Rules / Nano / Ultra receipts are from an earlier run (deployment ier7tjje); frontier receipts not published.</text>
+</svg>

@@ -3,11 +3,11 @@
 # Offline, $0: reads receipts only, makes no model calls, starts no lingering servers.
 #
 #   bash scripts/finalize.sh                     # results/nvidia-v1 (submission receipts)
-#   RUN=results/nvidia-v1 VISION=results/vision-r4 bash scripts/finalize.sh
+#   RUN=results/nvidia-v1 VISION=results/vision bash scripts/finalize.sh
 #   SKIP_TESTS=1 bash scripts/finalize.sh        # skip the pytest step
 #   OURS=final bash scripts/finalize.sh          # pin the demo's ours lane
 #
-# Scripts that still accept results/frozen-v1 or results/vision-r4 regenerate an
+# Scripts that still accept results/frozen-v1 or results/vision regenerate an
 # earlier internal run whose receipts are not published. Prefer nvidia-v1.
 #
 # Picks up new systems automatically (e.g. specialist-cal / full-cal receipts):
@@ -17,7 +17,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 RUN="${RUN:-results/nvidia-v1}"
-VISION="${VISION:-results/vision-r4}"
+VISION="${VISION:-results/vision}"
 IMG_DIR="${IMG_DIR:-docs/img}"
 PY="${PY:-.venv/bin/python}"
 [ -x "$PY" ] || PY=python3

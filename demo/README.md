@@ -32,8 +32,8 @@ stdlib only. Replay works fully offline from the LIVE-RECORDED cache.
 
 | Lane | What it is |
 |---|---|
-| **ours (House Rules)** | Registry `full` via `scripts.nano_ladder`: normalize → rules → router → LoRA-tuned NVIDIA Nemotron Nano 3 on Fireworks, with gray-zone escalation to Nemotron 3 Ultra. |
-| **frontier** | `frontier-router-a` = GPT-6.1 Sol, same zero-shot prompt/taxonomy as the NVIDIA arms in `results/`. |
+| **ours (House Rules)** | Registry `full` via `scripts.nano_ladder`: normalize → rules → router → LoRA-tuned NVIDIA Nemotron Nano 3 on Fireworks, with gray-zone escalation to Nemotron 3 Ultra. Uses the one-line training prompt (`TRAIN_SYSTEM_PROMPT`); the policy is learned from data. |
+| **frontier** | `frontier-router-a` = GPT-6.1 Sol via token router, with the **full** shared policy + 26-category taxonomy prompt (`moderation_prompt()`). That is *not* the same prompt the NVIDIA zero-shot arms in `results/` got (those were policy-blind label-only prompts). |
 
 Image routing / vision lane is **implemented and unit-tested**, but **no shipped
 demo receipt classified an image on the vision lane** (the meme SVG case `c11`
@@ -49,12 +49,22 @@ The meters show **two** $/1M numbers per lane, clearly labeled:
    `results.jsonl`). Ours ≈ **$2,809/1M** because a dedicated B200 ($13/h) ran
    ~79 s of wall-clock for only 100 low-concurrency messages. GPT billed ≈
    **$1,541/1M** on the same 100.
-2. **production basis (from results/)** — amortized at **full utilization** on
-   the held-out NVIDIA test (n=3,340): House Rules **$56/1M** vs GPT-6.1 Sol
+2. **production basis — marginal $/1M at saturation** (from `results/`) —
+   GPU rental **amortized at full utilization** on the held-out NVIDIA test
+   (n=3,340, concurrency 48): House Rules **$56/1M** vs GPT-6.1 Sol
    **$1,820/1M**. Sources: `results/nvidia-v1/final_headline.json` /
    `ours_summary.json`, and `results/stats/vs_frontier.json`. Also shipped as
    `demo/cached/production_basis.json`; the server re-reads the results files
    at runtime when present.
+
+   **This is not a monthly bill.** A single always-on 1× B200 at $13/h has a
+   floor of **$13 × 730 h = $9,490/mo** regardless of volume, plus Ultra
+   escalation tokens (~$2.87/1M from `final_headline.json` token_usd). At low
+   volume GPT is cheaper; break-even ≈ **5.2M msgs/mo vs GPT** and
+   ≈ **1.57M msgs/mo vs Opus**
+   (`9490 / (1819.6 − 2.9)` and `9490 / (6045.2 − 2.9)`). Fireworks
+   scale-to-zero / autoscaling is a possible mitigation for bursty traffic and
+   is **not measured here**.
 
 Latency: the UI shows **p50 and p95** for the demo run. Ours p50 is fast
 (~178 ms) but demo p95 is ~11.3 s because the entire tail is **7/100 messages
@@ -80,11 +90,13 @@ Writes:
 | `cached/fallback_recorded.jsonl` | frozen copy for `--replay-fallback` (stage-safe) |
 | `cached/fallback_meta.json` | recorded_at + LIVE-RECORDED label |
 | `cached/record_summary.json` | accuracy / latency / cost receipt |
-| `cached/production_basis.json` | production $/1M + demo escalation note (from `results/`) |
+| `cached/production_basis.json` | saturation-amortized $/1M + always-on GPU floor + demo escalation note |
 
 Lane mapping for classify: **ours** = registry `full` via `scripts.nano_ladder`
-(fine-tuned NVIDIA Nemotron Nano 3 on Fireworks); **frontier** = `frontier-router-a`
-(GPT-6.1 Sol, same prompt as results). UI badge: `LIVE-RECORDED · <ISO timestamp>`.
+(fine-tuned NVIDIA Nemotron Nano 3 on Fireworks; one-line training prompt);
+**frontier** = `frontier-router-a` (GPT-6.1 Sol with the full policy + taxonomy
+prompt — not the policy-blind label-only prompt used for NVIDIA zero-shot
+baselines in `results/`). UI badge: `LIVE-RECORDED · <ISO timestamp>`.
 
 Optional offline path from eval receipts (not the default demo cache):
 
@@ -121,8 +133,9 @@ image is `/assets/meme1.svg` (drawn for this demo). No `/case-img/...` paths.
 - **House Rules lane** — verdict, categories, route trail (Rules → Nano SFT →
   Ultra escalation…), clean-up line, Σ latency · $cost.
 - **Closed frontier lane** — GPT-6.1 Sol (or configured router arm), same cases.
-- **Meters / tally** — accuracy, macro-F1, p50/p95, **raw demo $/1M** next to
-  **production-basis $/1M**, plus an honest p95-tail note for Ultra escalations.
+-   **Meters / tally** — accuracy, macro-F1, p50/p95, **raw demo $/1M** next to
+  **saturation-amortized $/1M** (and the always-on GPU monthly floor), plus an
+  honest p95-tail note for Ultra escalations.
 - **Threshold slider** — re-scores cached P(unsafe) client-side.
 - **Footer** — Fireworks Training API (LoRA SFT; job id not recorded); no
   unevidenced vision / `firectl sftj` claim.
@@ -137,7 +150,7 @@ image is `/assets/meme1.svg` (drawn for this demo). No `/case-img/...` paths.
 | `cases.jsonl` | 100 locked rows (`gen_cases.py`) |
 | `cached/results.jsonl` | LIVE-RECORDED replay cache |
 | `cached/fallback_recorded.jsonl` | frozen LIVE copy for `--replay-fallback` |
-| `cached/production_basis.json` | production $/1M + escalation stats |
+| `cached/production_basis.json` | saturation-amortized $/1M, always-on floor, escalation stats |
 | `record.py` | live classify (parallel) or `--run` from receipts |
 | `smoke.py` | starts server, hits endpoints, checks path traversal + assets, exits |
 | `assets/meme1.svg` | only image case (hate text embedded in the SVG) |

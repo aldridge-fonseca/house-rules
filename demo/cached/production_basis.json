@@ -2,14 +2,17 @@
   "source": {
     "ours_usd_per_1m": "results/nvidia-v1/final_headline.json \u2192 final.nvidia_test.usd_per_1m_msgs (also results/nvidia-v1/ours_summary.json systems.final.nvidia_test)",
     "gpt_usd_per_1m": "results/stats/vs_frontier.json \u2192 comparisons.ours_vs_gpt.baseline.usd_per_1m_msgs",
+    "opus_usd_per_1m": "results/stats/vs_frontier.json \u2192 comparisons.ours_vs_opus.baseline.usd_per_1m_msgs",
+    "ours_token_usd_per_1m": "results/nvidia-v1/final_headline.json \u2192 final.nvidia_test.token_usd / n \u00d7 1e6",
     "ours_prod_p95_ms": "results/nvidia-v1/final_headline.json \u2192 final.nvidia_test.p95_ms",
     "gpt_prod_p95_ms": "results/stats/vs_frontier.json \u2192 comparisons.ours_vs_gpt.baseline.latency_p95_ms",
     "demo_escalations": "demo/cached/results.jsonl (route contains 'escalation')",
-    "demo_spend": "demo/cached/record_summary.json"
+    "demo_spend": "demo/cached/record_summary.json",
+    "always_on_floor": "gpu_usd_per_hour $13 (ours_summary / record_summary) \u00d7 730 h/mo"
   },
   "production": {
-    "label": "production basis (from results/)",
-    "note": "GPU rental amortized at full utilization over measured run wall-clock \u00f7 model calls (concurrency 48), plus Ultra escalation tokens; spin-up/idle excluded.",
+    "label": "production basis \u2014 marginal $/1M at saturation (from results/)",
+    "note": "GPU rental amortized at full utilization over measured run wall-clock \u00f7 model calls (concurrency 48), plus Ultra escalation tokens; spin-up/idle excluded. Not a monthly bill \u2014 see always_on for the $9,490/mo 1\u00d7 B200 floor ($13/h \u00d7 730 h).",
     "ours": {
       "usd_per_1m_msgs": 56.2,
       "p50_ms": 644,
@@ -24,24 +27,37 @@
       "p95_ms": 6066,
       "n": 3340,
       "set": "nvidia_test"
+    },
+    "always_on": {
+      "label": "always-on 1\u00d7 B200 monthly floor (not the amortized $/1M)",
+      "gpu_usd_per_hour": 13.0,
+      "hours_per_month": 730,
+      "floor_usd_per_month": 9490,
+      "token_usd_per_1m_msgs": 2.87,
+      "bill_at_1m_usd": 9493,
+      "break_even_vs_gpt_msgs_per_month": 5220000,
+      "break_even_vs_opus_msgs_per_month": 1571000,
+      "note": "A dedicated deployment bills ~$9,490/mo even at idle. The $56/1M figure is marginal cost at full utilization (concurrency 48), not a real bill at 1M msgs/mo. At low volume GPT is cheaper."
     }
   },
   "demo_run": {
     "label": "this 100-message demo run (low utilization, GPU time \u00f7 100 msgs)",
     "n": 100,
     "wall_s": 79.26,
+    "gpu_usd": 0.2862,
     "gpu_usd_per_hour": 13.0,
+    "cost_note": "Rule-decided rows carry no GPU allocation. gpu_usd ($0.2862) is wall-clock \u00d7 $13/h; ours_cost_usd ($0.2809) = per-row allocation (gpu_usd / n_written) over model-called rows, plus Ultra escalation tokens.",
     "ours": {
       "cost_usd": 0.2809,
       "usd_per_1m_msgs": 2809,
-      "p50_ms": 177.7,
+      "p50_ms": 177.9,
       "p95_ms": 11300.2,
       "correct": 97
     },
     "frontier": {
       "cost_usd": 0.1541,
       "usd_per_1m_msgs": 1541,
-      "p50_ms": 2498.9,
+      "p50_ms": 2531.8,
       "p95_ms": 5659.1
     },
     "escalations": {

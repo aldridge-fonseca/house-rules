@@ -33,7 +33,7 @@ needed) — see [Demo](#demo).
 Paired on the same 3,340 rows (refusals scored as errors): **+23.8 macro-F1
 over GPT-6.1 Sol** [+22.1, +25.5], McNemar p = 1.1e-169, and **+26.3 over
 Claude Opus 5.5** [+24.6, +28.0], p = 7.0e-193 — at **32×** and **108×** lower
-cost per message. Details and receipts: [Results](#results) ·
+marginal cost per message. Details and receipts: [Results](#results) ·
 [`results/stats/vs_frontier.md`](results/stats/vs_frontier.md).
 
 ## Overview
@@ -52,15 +52,18 @@ cost per message. Details and receipts: [Results](#results) ·
   type to a specialist, and escalated only when the specialist is uncertain
   (3.2% of on-policy rows).
 - **Why it matters.** Moderation is a marginal cost on every message, so the
-  gap is decisive at scale: at 100M messages/month the measured bill is
-  **~$5.6K** on House Rules vs **~$182K** on GPT-6.1 Sol or **~$605K** on
-  Claude Opus 5.5 — while scoring higher, refusing **0%** of requests, and
-  logging every verdict's route, model, and cost for audit. Fine-tuning a 30B
+  gap is decisive at scale: at 100M messages/month the bill is **~$9.8K**
+  for one always-on House Rules GPU vs **~$182K** on GPT-6.1 Sol or
+  **~$605K** on Claude Opus 5.5 — while scoring higher, refusing **0%** of
+  requests, and logging every verdict's route, model, and cost for audit.
+  (Below ~5M msgs/month pay-per-token is cheaper — see the
+  [monthly bill](#nvidia-policy-held-out-test-n--3340).) Fine-tuning a 30B
   open model on the target policy beat the same model untuned by **+12.6
   macro-F1** and a 550B zero-shot model by **+10.8** on 3,340 held-out cases,
-  at roughly half the cost per message. Teams adopt this to own their policy,
-  eliminate refusal-as-product-failure, and keep safety spend flat as volume
-  grows.
+  at roughly half the cost per message — with the caveat that both NVIDIA
+  baselines ran *policy-blind* (a minimal prompt with no policy text; see
+  [Method](#results)). Teams adopt this to own their policy, eliminate
+  refusal-as-product-failure, and keep safety spend flat as volume grows.
 
 ## Built with — sponsor technology, with receipts
 
@@ -79,17 +82,33 @@ Every claim below cites a receipt in this repo;
 
 ## Results
 
-**Method.** Every system ran the same rows with the same prompt, taxonomy, and
-deterministic scorer. Both frontier baselines received the identical
-zero-shot policy prompt as the NVIDIA arms — no few-shot examples and no
-policy fine-tuning (prompt built from the shared taxonomy in
-`safety_one/providers/frontier.py`, driven by
-`baselines/run_frontier_router.py`). The headline metric is binary macro-F1
-over `safe`/`unsafe`, reported with unsafe recall, over-block rate (share of
-gold-`safe` rows blocked), refusal rate, p50/p95 latency, and USD per 1M
-messages. Provider refusals and errors are scored as incorrect. Differences
-use paired bootstrap 95% CIs and exact McNemar tests on id-matched rows
-(`results/nvidia-v1/ours_summary.json`, `results/stats/vs_frontier.json`).
+**Method.** Every system ran the same rows under the same deterministic
+scorer. The prompts differ **by design**, disclosed here rather than claimed
+identical:
+
+- **House Rules (tuned specialist)** — its one-line training prompt
+  (`scripts/nano_ladder.py` `TRAIN_SYSTEM_PROMPT`: "…using the project
+  taxonomy"). The policy itself is learned from the LoRA training data, not
+  written into the prompt.
+- **Untuned Nano and Ultra zero-shot baselines** — the minimal label-only
+  prompt in `safety_one/providers/fireworks.py` ("Classify the user content
+  for content safety…"), **with no policy text**: ≈83–93 median prompt
+  tokens across the shipped receipts. These NVIDIA zero-shot baselines are
+  therefore *policy-blind*, and their gap to House Rules mixes fine-tuning
+  with policy knowledge (see
+  [Limitations](#tradeoffs-and-limitations)).
+- **GPT-6.1 Sol and Claude Opus 5.5** — the full shared policy + 26-category
+  taxonomy prompt (`safety_one/providers/frontier.py` `moderation_prompt()`),
+  ≈390 (GPT tokenizer) / ≈725 (Opus tokenizer) extra input tokens per
+  message vs the NVIDIA arms, driven by
+  `baselines/run_frontier_router.py`.
+
+The headline metric is binary macro-F1 over `safe`/`unsafe`, reported with
+unsafe recall, over-block rate (share of gold-`safe` rows blocked), refusal
+rate, p50/p95 latency, and USD per 1M messages. Provider refusals and errors
+are scored as incorrect. Differences use paired bootstrap 95% CIs and exact
+McNemar tests on id-matched rows (`results/nvidia-v1/ours_summary.json`,
+`results/stats/vs_frontier.json`).
 
 **Datasets.**
 
@@ -109,7 +128,10 @@ use paired bootstrap 95% CIs and exact McNemar tests on id-matched rows
   clustered by-base-message CIs (300 clusters, 2,000 resamples, seed 0) in
   [`results/stats/disguised_clustered.md`](results/stats/disguised_clustered.md);
   the intervals widen — e.g. ours − Ultra is −0.0 [−2.9, +2.8] clustered vs
-  [−1.6, +1.6] row-level — and every conclusion is unchanged.
+  [−1.6, +1.6] row-level — and every conclusion is unchanged. House Rules and
+  Ultra `disguised_v1` receipts are from an earlier run of the same adapter
+  (deployment `ier7tjje`); the frontier receipts from that run were not
+  retained — see the footnote under the disguised table.
 
 ### NVIDIA-policy held-out test (n = 3,340)
 
@@ -122,24 +144,41 @@ The headline table at the top is this set. Two more facts:
   requests; Claude Opus 5.5 refused **13.0%** (434). House Rules and both
   NVIDIA baselines answered 100% of rows.
 
-**Monthly bill** (production basis; see cost method below):
+**Monthly bill** — two honest bases, both computed from receipts (see cost
+method below):
 
-| System | $/1M msgs | 1M msgs/mo | 10M msgs/mo | 100M msgs/mo |
-|---|---:|---:|---:|---:|
-| House Rules | 56 | $56 | $562 | $5,620 |
-| Nemotron Nano 3 30B, untuned | 64 | $64 | $643 | $6,430 |
-| Nemotron 3 Ultra 550B, zero-shot | 108 | $108 | $1,079 | $10,790 |
-| GPT-6.1 Sol | 1,820 | $1,820 | $18,196 | $181,964 |
-| Claude Opus 5.5 | 6,045 | $6,045 | $60,452 | $604,524 |
+- **Marginal rate at saturation** ($/1M msgs, from the unrounded figures
+  56.2 / 64.3 / 107.9 / 1,819.6 / 6,045.2 in `results/nvidia-v1/ours_summary.json`
+  and `results/stats/vs_frontier.json`): ours **$56**, Nano untuned $64,
+  Ultra zero-shot $108, GPT-6.1 Sol $1,820, Claude Opus 5.5 $6,045. Ours =
+  dedicated-GPU rental ($13/h, 1× B200) amortized at **full utilization**
+  over measured run wall-clock ÷ model calls (concurrency 48), plus measured
+  Ultra escalation tokens; spin-up/idle excluded. Frontier $/1M = (receipt
+  cost of verdict rows + `results/spend.json` ledger cost of refusal rows) ÷
+  all 3,340 rows; GPT refusals are HTTP-level blocks billed at $0 —
+  conservative in GPT's favor.
+- **Always-on bill.** A real service can't batch a month of traffic into 4
+  GPU-hours: one dedicated B200 at $13/h costs **≈$9,490/month** ($13 × 730
+  h) whether it serves 1 message or 178M, plus $2.87/1M of Ultra escalation
+  token spend (`final` token_usd $0.0096 ÷ 3,340 rows).
 
-Computed from the unrounded $/1M figures (56.2 / 64.3 / 107.9 / 1,819.6 /
-6,045.2 — `results/nvidia-v1/ours_summary.json`,
-`results/stats/vs_frontier.json`). Ours = dedicated-GPU rental ($13/h, 1×
-B200) amortized at **full utilization** over measured run wall-clock ÷ model
-calls (concurrency 48), plus measured Ultra escalation tokens; spin-up/idle
-excluded. Frontier $/1M = (receipt cost of verdict rows + `results/spend.json`
-ledger cost of refusal rows) ÷ all 3,340 rows; GPT refusals are HTTP-level
-blocks billed at $0 — conservative in GPT's favor.
+| Messages/mo | House Rules, always-on 1× B200 | GPT-6.1 Sol | Claude Opus 5.5 | Honest result |
+|---|---:|---:|---:|---|
+| 1M | $9,493 | $1,820 | $6,045 | **GPT is 5.2× cheaper** than ours; Opus 1.6× |
+| 10M | $9,519 | $18,196 | $60,452 | ours 1.9× cheaper than GPT, 6.4× than Opus |
+| 100M | $9,777 | $181,964 | $604,524 | ours 18.6× / 61.8× cheaper |
+
+Break-even: always-on House Rules beats GPT-6.1 Sol above **≈5.2M msgs/mo**
+and Opus 5.5 above **≈1.6M msgs/mo** ($9,490 ÷ per-1M price gap); below
+that, pay-per-token wins. The same GPU floor applies to the untuned-Nano arm
+(its own dedicated deployment, no escalation tokens). A zero-shot
+Ultra-550B-only service has no GPU floor and stays cheaper than always-on
+House Rules up to **≈90M msgs/mo** ($9,490 ÷ ($107.9 − $2.87)/1M). One B200
+replica at the measured rate (3,340 calls in 49.3 s ≈ 68 msg/s, concurrency
+48) serves ≈178M msgs/month, so 100M/mo is ≈56% average utilization; HA or
+peak headroom means a second replica (+$9,490/mo). Fireworks deployment
+autoscaling / scale-to-zero would soften the floor for bursty traffic — it
+was **not measured** here.
 
 ![Macro-F1 vs measured cost per 1M messages](docs/video/quality_vs_cost.png)
 
@@ -148,7 +187,9 @@ blocks billed at $0 — conservative in GPT's favor.
 
 ![Monthly bill at 100M messages/month](docs/video/monthly_bill.png)
 
-*Monthly bill at 100M msgs/mo: $5.6K vs $182K–$605K.*
+*Marginal-rate bill at 100M msgs/mo (full-utilization basis): $5.6K vs
+$182K–$605K. The always-on bill — one dedicated B200 kept hot — is ≈$9.8K;
+see the table above.*
 
 ![p50 and p95 latency per system](docs/video/latency.png)
 
@@ -157,20 +198,24 @@ rows only).*
 
 ### Disguised attacks (n = 2,222)
 
-| System | Macro-F1 | Unsafe recall | Over-block % | Refused % | p50 ms | p95 ms | $/1M msgs | Bill 1M / 10M / 100M per mo |
+| System | Macro-F1 | Unsafe recall | Over-block % | Refused % | p50 ms | p95 ms | $/1M msgs | Marginal bill 1M / 10M / 100M per mo |
 |---|---:|---:|---:|---:|---:|---:|---:|---|
 | House Rules | 82.0 | **89.4** | 25.3 | 0.0 | **571** | **1,115** | $69 | $69 / $692 / $6,920 |
 | Nemotron Nano 3 30B, untuned | 63.3 | 94.0 | 62.2 | 0.0 | 775 | 1,086 | $63 | $63 / $627 / $6,270 |
 | Nemotron 3 Ultra 550B, zero-shot | 82.0 | 83.8 | 19.9 | 0.0 | 713 | 1,013 | $148 | $148 / $1,484 / $14,840 |
 
 Every cell above is computed from shipped receipts
-(`results/nvidia-v1/ours_summary.json`).
+(`results/nvidia-v1/ours_summary.json`). The bill column repeats the marginal
+at-saturation rate; an always-on dedicated deployment adds the ≈$9,490/mo
+GPU floor described above.
 
 > **Frontier models on disguised_v1 — earlier run, per-case receipts not
 > published** (not verifiable from this repo; excluded from all asserted
 > numbers): GPT-6.1 Sol scored 87.8 macro-F1 (recall 81.8, over-block 6.0,
-> refused 0.3%) and Claude Opus 5.5 scored 64.8 (refused 28.8%). Taken at face
-> value, GPT-6.1 Sol beats House Rules on disguised text — see
+> refused 0.3%) and Claude Opus 5.5 scored 64.8 (refused 28.8%). House
+> Rules' and Ultra's disguised_v1 rows were recorded in that same earlier
+> run and are shipped; the frontier receipts from it were not retained.
+> Taken at face value, GPT-6.1 Sol beats House Rules on disguised text — see
 > [Limitations](#tradeoffs-and-limitations).
 
 ### Paired differences (House Rules − baseline, macro-F1 points)
@@ -198,7 +243,7 @@ ours − Nano untuned +18.7 [+14.1, +23.4], ours − clean-up-off +8.0 [+5.9,
 +10.1].
 
 Secondary metrics vs frontier (`results/stats/vs_frontier.md`): Δ unsafe
-recall **+27.7** [+26.0, +29.4] vs GPT and **+30.0** [+28.2, +31.8] vs Opus.
+recall **+27.7** [+25.9, +29.4] vs GPT and **+30.0** [+28.2, +31.8] vs Opus.
 **Disclosed loss:** we over-block more than GPT-6.1 Sol — **+4.4 pp** [+2.5,
 +6.3], significant — and insignificantly more than Opus (+1.6 [−0.5, +3.7]).
 
@@ -226,7 +271,11 @@ specialist-only ablation (no rules, router, or escalation) is **+0.2** [−0.4,
 +0.7], n.s. on-policy — but escalation cuts over-block 7.3 → 5.5% and pays for
 itself on adversarial and mixed-policy inputs. The untuned Nano rows are the
 LoRA ablation: fine-tuning is worth **+12.6** on-policy and **+18.7**
-disguised.
+disguised. The clean-up ablation is cross-run: `final`'s disguised rows come
+from the earlier run on deployment `ier7tjje` while `final-rawtext` ran
+later on `qd2gx85j` with the current code (only `provider_text` differs);
+the $69/1M disguised rate uses the earlier run's GPU allocation ($60/1M
+calls), whose timing file is not shipped.
 
 ![Headline chart](docs/img/final-headline.png)
 
@@ -263,6 +312,17 @@ verdict rows plus the spend-ledger cost of refusal rows, over all rows.
 Latency is client-side wall time per message including queueing and
 escalation round-trips (frontier latency over answered rows only).
 
+**Frontier access path.** Both frontier arms ran through a third-party
+OpenAI-compatible token router (`baselines/run_frontier_router.py`), billed
+at the router's published rates — a ratio-priced gateway, not first-party
+list prices (`baselines/prices.yaml`, fetched 2026-11-02: GPT-6.1 Sol $2 /
+$10 and Claude Opus 5.5 $4 / $20 per 1M input / output tokens). The run's
+`--concurrency` flag was not recorded (runner default: 4; the NVIDIA runs
+used 48), and frontier latency includes the gateway hop. On answered rows,
+GPT averaged 539 input / 78 output tokens per message and Opus 923 / 134;
+≈390 / 725 of those input tokens are the policy prompt that the tuned
+specialist does not need.
+
 ## Architecture
 
 ![Architecture](docs/img/architecture.svg)
@@ -295,6 +355,52 @@ escalation round-trips (frontier latency over answered rows only).
 Every verdict carries `{label, categories, route, rule_hits, model, latency,
 cost}` — an auditable path for each decision.
 
+## Bring your own policy
+
+The shipped numbers are scored under NVIDIA's Nemotron-3.5 policy; the
+pipeline is not married to it.
+
+**Without retraining — config only** (`config/router.yaml`):
+
+```yaml
+confidence_gate:
+  gray_zone:
+    default: [0.35, 0.65]          # widen -> escalate more borderline rows
+    category_overrides:
+      sexual_minor: [0.05, 0.95]   # near-always escalate this category
+```
+
+Moving `calibration.unsafe_threshold` or the gray-zone band changes verdicts
+on the *same* specialist scores — the demo's threshold slider re-scores the
+cached P(unsafe) values live with no model call. Route rules
+(`route_order`, `emoji_route`, `non_english_route`) and the rule-gate
+patterns are declarative too.
+
+**With retraining — a new policy needs labeled data and a LoRA pass:**
+
+1. Label rows under the new taxonomy (`scripts/prep_nvidia.py`-style; the
+   shipped adapter used 19,830 train + 2,479 dev rows).
+2. `python scripts/train_api_sft.py --job nano` — the shipped adapter's
+   recipe on the Fireworks Training API; its wall-clock and cost were
+   **not recorded**.
+3. `scripts/deploy_create.py` → dedicated deployment, then
+   `scripts/calibrate_gate.py` re-fits the threshold and gray zone on a dev
+   split.
+4. Re-run `scripts/run_eval.py` + `scripts/nvidia_summary.py` for receipted
+   numbers under the new policy.
+
+**Integration contract** — one auditable verdict per message (real row from
+`results/nvidia-v1/final.jsonl`):
+
+```json
+{"label": "unsafe", "categories": ["misinformation"], "route": "specialist",
+ "rule_hits": [], "model": "accounts/…/deployments/qd2gx85j",
+ "latency_ms": 1303.99, "cost_usd": 0.0}
+```
+
+(`cost_usd` is per-token spend; dedicated-GPU time is allocated per run —
+see the cost method above.)
+
 ## Demo
 
 `demo/` is a loopback "moderation race": 100 fixed cases classified by House
@@ -307,10 +413,11 @@ Read the meters the right way:
 - **Raw demo spend looks worse for us, and it's real:** $0.2809 vs $0.1541
   for 100 messages ($2,809 vs $1,541 per 1M). One dedicated GPU ($13/h) ran
   ~79 s to serve only 100 calls — very low utilization, and the meter counts
-  the whole window. The **production basis** used in every table above —
+  the whole window. The **marginal production basis** in the tables above —
   full-utilization amortization measured on the 3,340-row runs — is **$56 vs
-  $1,820 per 1M** (`results/stats/vs_frontier.json`). Both numbers are true;
-  they measure different things.
+  $1,820 per 1M** (`results/stats/vs_frontier.json`), with the always-on GPU
+  floor on top as shown in the bill table. All these numbers are true; they
+  measure different things.
 - **The p95 tail is Ultra escalation, not the specialist:** ours p50
   **178 ms** vs GPT 2,532 ms, but p95 **11,300 ms** vs 5,659 ms because 7/100
   demo rows escalated to Ultra serverless (11–35 s each, cold/queued). Every
@@ -335,18 +442,30 @@ Read the meters the right way:
   (+4.4 pp [+2.5, +6.3]) — that's the disclosed cost of 97.6% unsafe recall.
   The operating point was chosen for recall on the dev split; the threshold
   and gray zone are config, not constants.
-- **Cost assumes full utilization.** Dedicated-GPU $/1M amortizes $13/h over
-  measured run wall-clock at concurrency 48 and excludes spin-up/idle. At low
-  or bursty traffic the raw spend is much higher — see the Demo section, where
-  the same pipeline shows $2,809/1M on 100 calls.
+- **Dedicated capacity has a floor.** The $56/1M rate amortizes $13/h over
+  measured run wall-clock at concurrency 48 and excludes spin-up/idle. An
+  always-on deployment costs ≈$9,490/month regardless of volume, so below
+  ≈5.2M msgs/mo GPT-6.1 Sol is the cheaper option (see the monthly-bill
+  table), and the raw spend at very low traffic is far worse: the same
+  pipeline shows $2,809/1M on the 100-call demo.
 - **One policy.** Scores are under NVIDIA's content-safety taxonomy. Other
   labs' policies differ (the disguised set's own labels come from six
   mixed-policy sources); the same system under another policy needs
-  re-labeled data and a re-tuned threshold — the pipeline supports it, the
-  measured numbers don't transfer.
-- **Frontier baselines are zero-shot.** Both ran the same shared policy
-  prompt and taxonomy with no few-shot examples and no policy fine-tuning. A
-  fine-tuned or few-shot frontier arm would likely score higher; the
+  re-labeled data and a re-tuned threshold — the pipeline supports it (see
+  [Bring your own policy](#bring-your-own-policy)), the measured numbers
+  don't transfer.
+- **Baseline prompts are asymmetric (disclosed, not corrected).** The
+  untuned-Nano and Ultra zero-shot baselines ran the minimal label-only
+  prompt and never saw the written policy, while the frontier arms saw the
+  full ≈390–725-token policy prompt (see Method). So "+12.6 over untuned
+  Nano" and "+10.8 over Ultra 550B" mix fine-tuning with policy knowledge —
+  a policy-prompted Ultra could score higher than 84.5 (untested). Re-running
+  the NVIDIA baselines with the policy prompt is a paid run and was not
+  done; the asymmetry is disclosed here instead of re-benchmarked.
+- **Frontier baselines are zero-shot.** Both ran the full shared policy +
+  26-category taxonomy prompt with no few-shot examples and no policy
+  fine-tuning — the only arms shown the written policy (see Method). A
+  fine-tuned or few-shot frontier arm could score higher (untested); the
   comparison demonstrates the cost / latency / refusal trade-off, not the
   best achievable frontier score.
 - **Opus refusal rate.** Claude Opus 5.5 completed all 3,340 NVIDIA-policy

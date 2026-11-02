@@ -29,9 +29,9 @@ import unicodedata
 from pathlib import Path
 
 DEMO_DIR = Path(__file__).resolve().parent
-SAFETY_ONE_ROOT = DEMO_DIR.parent
-if str(SAFETY_ONE_ROOT) not in sys.path:
-    sys.path.insert(0, str(SAFETY_ONE_ROOT))
+REPO_ROOT = DEMO_DIR.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 # ---------------------------------------------------------------- real wiring
 
@@ -54,7 +54,7 @@ def _verdict_to_dict(v):
         "probs": dict(d.get("probs") or {}),
         "route": d.get("route", "specialist"),
         "rule_hits": list(d.get("rule_hits") or []),
-        "model": d.get("model", "safety-one"),
+        "model": d.get("model", "house-rules"),
         "latency_ms": float(d.get("latency_ms") or 0.0),
         "cost_usd": float(d.get("cost_usd") or 0.0),
         # raw carries route_reasons / model_chain / pre_escalation — the UI
@@ -80,7 +80,7 @@ def _resolve_image(path):
     rel = path[1:] if str(path).startswith("/") else path
     p = Path(rel)
     if not p.is_file():
-        for base in (DEMO_DIR, DEMO_DIR / "assets", SAFETY_ONE_ROOT):
+        for base in (DEMO_DIR, DEMO_DIR / "assets", REPO_ROOT):
             cand = (base / rel).resolve()
             if cand.is_file():
                 p = cand
@@ -255,7 +255,9 @@ def load_frontier():
     """(callable(row)->verdict_dict, mode) for the frontier lane, or (None, None).
 
     LIVE path: registry frontier-router-a (GPT-6.1 Sol via ROUTER_*) when
-    DEMO_LIVE_FRONTIER=1 and ROUTER_API_KEY are set — same prompt as results.
+    DEMO_LIVE_FRONTIER=1 and ROUTER_API_KEY are set — full policy + taxonomy
+    prompt (`moderation_prompt()`), matching the frontier arms in results/
+    (not the policy-blind label-only prompt used for NVIDIA zero-shot baselines).
     Otherwise a MockProvider sim labeled `*-sim`.
     """
     _ensure_env()

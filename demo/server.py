@@ -39,6 +39,7 @@ CACHE_PATH = DEMO / "cached" / "results.jsonl"
 FALLBACK_CACHE = DEMO / "cached" / "fallback_recorded.jsonl"
 FALLBACK_META = DEMO / "cached" / "fallback_meta.json"
 PROD_BASIS_PATH = DEMO / "cached" / "production_basis.json"
+RECORD_SUMMARY_PATH = DEMO / "cached" / "record_summary.json"
 PAGE = DEMO / "index.html"
 IMAGE_ROOT = ROOT / "data" / "vision" / "images"
 IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
@@ -46,6 +47,9 @@ IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
 OURS_SUMMARY = ROOT / "results" / "nvidia-v1" / "ours_summary.json"
 FINAL_HEADLINE = ROOT / "results" / "nvidia-v1" / "final_headline.json"
 VS_FRONTIER = ROOT / "results" / "stats" / "vs_frontier.json"
+# 1× B200 dedicated rate (ours_summary / record_summary) × ~730 h/mo.
+GPU_USD_PER_HOUR = 13.0
+HOURS_PER_MONTH = 730
 
 # Active replay cache path — flipped by --replay-fallback.
 ACTIVE_CACHE = CACHE_PATH
@@ -87,7 +91,8 @@ def load_production_basis(cache: dict | None = None) -> dict:
     Prefers live reads of results/nvidia-v1/* and results/stats/vs_frontier.json
     so the UI cannot disagree with receipts; falls back to the shipped
     demo/cached/production_basis.json. Escalation counts always come from the
-    active replay cache when available.
+    active replay cache when available. demo_run latency/cost are refreshed
+    from record_summary.json when present.
     """
     basis: dict = {}
     if PROD_BASIS_PATH.exists():
@@ -99,6 +104,9 @@ def load_production_basis(cache: dict | None = None) -> dict:
     prod = dict(basis.get("production") or {})
     ours_prod = dict(prod.get("ours") or {})
     front_prod = dict(prod.get("frontier") or {})
+    token_usd_per_1m = None
+    gpt_usd_per_1m = None
+    opus_usd_per_1m = None
     # Refresh from receipts when present (never invent / never favor-round).
     try:
         if FINAL_HEADLINE.exists():
@@ -112,7 +120,19 @@ def load_production_basis(cache: dict | None = None) -> dict:
                 ours_prod["p95_ms"] = round(float(nt["p95_ms"]))
             if nt.get("n") is not None:
                 ours_prod["n"] = int(nt["n"])
+            if nt.get("token_usd") is not None and nt.get("n"):
+                token_usd_per_1m = float(nt["token_usd"]) / float(nt["n"]) * 1e6
             ours_prod.setdefault("set", "nvidia_test")
+            gpt_row = ((fh.get("gpt-6.1-sol") or {}).get("nvidia_test")
+                       or (fh.get("frontier-router-a") or {}).get("nvidia_test")
+                       or {})
+            opus_row = ((fh.get("claude-opus-5.5") or {}).get("nvidia_test")
+                        or (fh.get("frontier-router-b") or {}).get("nvidia_test")
+                        or {})
+            if gpt_row.get("usd_per_1m_msgs") is not None:
+                gpt_usd_per_1m = float(gpt_row["usd_per_1m_msgs"])
+            if opus_row.get("usd_per_1m_msgs") is not None:
+                opus_usd_per_1m = float(opus_row["usd_per_1m_msgs"])
         elif OURS_SUMMARY.exists():
             os_ = json.loads(OURS_SUMMARY.read_text(encoding="utf-8"))
             nt = (((os_.get("systems") or {}).get("final") or {})
@@ -125,13 +145,16 @@ def load_production_basis(cache: dict | None = None) -> dict:
                 ours_prod["p50_ms"] = round(float(nt["p50_ms"]))
             if nt.get("n") is not None:
                 ours_prod["n"] = int(nt["n"])
+            if nt.get("token_usd") is not None and nt.get("n"):
+                token_usd_per_1m = float(nt["token_usd"]) / float(nt["n"]) * 1e6
             ours_prod.setdefault("set", "nvidia_test")
         if VS_FRONTIER.exists():
             vf = json.loads(VS_FRONTIER.read_text(encoding="utf-8"))
-            base = (((vf.get("comparisons") or {}).get("ours_vs_gpt") or {})
-                    .get("baseline") or {})
+            comps = vf.get("comparisons") or {}
+            base = ((comps.get("ours_vs_gpt") or {}).get("baseline") or {})
             if base.get("usd_per_1m_msgs") is not None:
-                front_prod["usd_per_1m_msgs"] = round(float(base["usd_per_1m_msgs"]))
+                gpt_usd_per_1m = float(base["usd_per_1m_msgs"])
+                front_prod["usd_per_1m_msgs"] = round(gpt_usd_per_1m)
             if base.get("latency_p50_ms") is not None:
                 front_prod["p50_ms"] = round(float(base["latency_p50_ms"]))
             if base.get("latency_p95_ms") is not None:
@@ -140,17 +163,46 @@ def load_production_basis(cache: dict | None = None) -> dict:
                 front_prod["n"] = int(base["n"])
             front_prod.setdefault("label", "GPT-6.1 Sol")
             front_prod.setdefault("set", "nvidia_test")
+            opus_base = ((comps.get("ours_vs_opus") or {}).get("baseline") or {})
+            if opus_base.get("usd_per_1m_msgs") is not None:
+                opus_usd_per_1m = float(opus_base["usd_per_1m_msgs"])
     except (OSError, json.JSONDecodeError, TypeError, ValueError):
         pass
 
+    floor = GPU_USD_PER_HOUR * HOURS_PER_MONTH
+    always_on = dict(prod.get("always_on") or {})
+    always_on.update({
+        "label": "always-on 1× B200 monthly floor (not the amortized $/1M)",
+        "gpu_usd_per_hour": GPU_USD_PER_HOUR,
+        "hours_per_month": HOURS_PER_MONTH,
+        "floor_usd_per_month": floor,
+        "note": (
+            "A dedicated deployment bills ~$9,490/mo even at idle. The "
+            "$56/1M figure is marginal cost at full utilization (concurrency "
+            "48), not a real bill at 1M msgs/mo. At low volume GPT is cheaper."
+        ),
+    })
+    if token_usd_per_1m is not None:
+        always_on["token_usd_per_1m_msgs"] = round(token_usd_per_1m, 2)
+        always_on["bill_at_1m_usd"] = round(floor + token_usd_per_1m * 1.0)
+        # usd_per_1m is $/million msgs, so floor/Δ yields millions of msgs;
+        # multiply by 1e6 for an absolute msgs/mo count (~5.2M vs GPT, ~1.57M vs Opus).
+        if gpt_usd_per_1m is not None and gpt_usd_per_1m > token_usd_per_1m:
+            always_on["break_even_vs_gpt_msgs_per_month"] = int(round(
+                floor / (gpt_usd_per_1m - token_usd_per_1m) * 1e6, -4))
+        if opus_usd_per_1m is not None and opus_usd_per_1m > token_usd_per_1m:
+            always_on["break_even_vs_opus_msgs_per_month"] = int(round(
+                floor / (opus_usd_per_1m - token_usd_per_1m) * 1e6, -3))
+
     prod["ours"] = ours_prod
     prod["frontier"] = front_prod
-    prod.setdefault("label", "production basis (from results/)")
-    prod.setdefault(
-        "note",
+    prod["always_on"] = always_on
+    prod["label"] = "production basis — marginal $/1M at saturation (from results/)"
+    prod["note"] = (
         "GPU rental amortized at full utilization over measured run wall-clock "
         "÷ model calls (concurrency 48), plus Ultra escalation tokens; "
-        "spin-up/idle excluded.",
+        "spin-up/idle excluded. Not a monthly bill — see always_on for the "
+        f"${floor:,.0f}/mo 1× B200 floor ($13/h × 730 h)."
     )
     basis["production"] = prod
 
@@ -159,6 +211,57 @@ def load_production_basis(cache: dict | None = None) -> dict:
         "label",
         "this 100-message demo run (low utilization, GPU time ÷ 100 msgs)",
     )
+    # Keep demo_run latency/cost aligned with record_summary.json (issue 11).
+    if RECORD_SUMMARY_PATH.exists():
+        try:
+            rs = json.loads(RECORD_SUMMARY_PATH.read_text(encoding="utf-8"))
+            demo_run["n"] = int(rs.get("n_written") or rs.get("n_cases") or
+                                demo_run.get("n") or 0) or demo_run.get("n")
+            if rs.get("wall_s") is not None:
+                demo_run["wall_s"] = float(rs["wall_s"])
+            if rs.get("gpu_usd_per_hour") is not None:
+                demo_run["gpu_usd_per_hour"] = float(rs["gpu_usd_per_hour"])
+            if rs.get("gpu_usd") is not None:
+                demo_run["gpu_usd"] = float(rs["gpu_usd"])
+            ours_rs = rs.get("ours") or {}
+            front_rs = rs.get("frontier") or {}
+            ours_dr = dict(demo_run.get("ours") or {})
+            front_dr = dict(demo_run.get("frontier") or {})
+            if ours_rs.get("cost_usd") is not None:
+                ours_dr["cost_usd"] = float(ours_rs["cost_usd"])
+                ours_dr["usd_per_1m_msgs"] = round(float(ours_rs["cost_usd"]) * 1e4)
+            elif rs.get("ours_cost_usd") is not None:
+                ours_dr["cost_usd"] = float(rs["ours_cost_usd"])
+                ours_dr["usd_per_1m_msgs"] = round(float(rs["ours_cost_usd"]) * 1e4)
+            if ours_rs.get("p50_ms") is not None:
+                ours_dr["p50_ms"] = float(ours_rs["p50_ms"])
+            if ours_rs.get("p95_ms") is not None:
+                ours_dr["p95_ms"] = float(ours_rs["p95_ms"])
+            if ours_rs.get("correct") is not None:
+                ours_dr["correct"] = int(ours_rs["correct"])
+            if front_rs.get("cost_usd") is not None:
+                front_dr["cost_usd"] = float(front_rs["cost_usd"])
+                front_dr["usd_per_1m_msgs"] = round(float(front_rs["cost_usd"]) * 1e4)
+            elif rs.get("frontier_cost_usd") is not None:
+                front_dr["cost_usd"] = float(rs["frontier_cost_usd"])
+                front_dr["usd_per_1m_msgs"] = round(
+                    float(rs["frontier_cost_usd"]) * 1e4)
+            if front_rs.get("p50_ms") is not None:
+                front_dr["p50_ms"] = float(front_rs["p50_ms"])
+            if front_rs.get("p95_ms") is not None:
+                front_dr["p95_ms"] = float(front_rs["p95_ms"])
+            demo_run["ours"] = ours_dr
+            demo_run["frontier"] = front_dr
+            demo_run["cost_note"] = (
+                "Rule-decided rows carry no GPU allocation. "
+                f"gpu_usd (${float(rs.get('gpu_usd') or 0):.4f}) is wall-clock × "
+                f"${float(rs.get('gpu_usd_per_hour') or GPU_USD_PER_HOUR):.0f}/h; "
+                f"ours_cost_usd (${float(rs.get('ours_cost_usd') or 0):.4f}) = "
+                "per-row allocation (gpu_usd / n_written) over model-called rows, "
+                "plus Ultra escalation tokens."
+            )
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            pass
     if cache:
         esc = _escalation_stats(cache)
         if esc:

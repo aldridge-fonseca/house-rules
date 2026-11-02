@@ -1,8 +1,23 @@
 {
   "dataset": "nvidia_test (held-out NVIDIA Nemotron Content Safety 3.5 policy)",
-  "dataset_n_target": 3340,
+  "dataset_n": 3340,
   "refusal_policy": "refusals and errors scored as incorrect (label flipped vs gold)",
-  "cost_footnote": "Ours = GPU rental amortized at full utilization ($13/h \u00d7 wall \u00f7 calls). Ultra/frontier = measured tokens.",
+  "cost_footnote": "Ours $/1M = marginal cost at full utilization ($13/h \u00d7 measured wall \u00f7 calls) + measured Ultra escalation tokens. One always-on B200 replica floors at $9,490/mo regardless of volume (\u2248178M msgs/mo capacity at saturation). Frontier arms ran via a third-party OpenAI-compatible token router at the router's rates (baselines/prices.yaml); latency over answered rows only, gateway hop included.",
+  "always_on": {
+    "floor_usd_per_month_per_replica": 9490.0,
+    "gpu_rate_usd_h": 13.0,
+    "hours_per_month": 730.0,
+    "escalation_tokens_usd_per_1m": 2.87,
+    "replica_capacity_msgs_per_month": 178043002,
+    "bill_usd_per_month": {
+      "1m": 9493,
+      "10m": 9519,
+      "100m": 9777
+    },
+    "breakeven_vs_opus_msgs_per_month": 1570577,
+    "breakeven_vs_gpt_msgs_per_month": 5223568,
+    "ultra_serverless_cheaper_below_msgs_per_month": 90358794
+  },
   "systems": {
     "final": {
       "label": "House Rules (tuned Nano pipeline)",
@@ -15,6 +30,7 @@
         96.2
       ],
       "usd_per_1m_msgs": 56.2,
+      "usd_per_1m_msgs_basis": "marginal (full-utilization amortized GPU + measured tokens)",
       "monthly_bill_100m": 5620,
       "p50_ms": 644.5,
       "p95_ms": 1193.0,
@@ -34,6 +50,7 @@
         84.2
       ],
       "usd_per_1m_msgs": 64.3,
+      "usd_per_1m_msgs_basis": "marginal (full-utilization amortized GPU + measured tokens)",
       "monthly_bill_100m": 6430,
       "p50_ms": 804.4,
       "p95_ms": 1157.2,
@@ -53,6 +70,7 @@
         85.9
       ],
       "usd_per_1m_msgs": 107.9,
+      "usd_per_1m_msgs_basis": "measured tokens",
       "monthly_bill_100m": 10790,
       "p50_ms": 709.6,
       "p95_ms": 1594.0,
@@ -72,6 +90,7 @@
         73.2
       ],
       "usd_per_1m_msgs": 1819.64,
+      "usd_per_1m_msgs_basis": "measured tokens",
       "monthly_bill_100m": 181964,
       "p50_ms": 3235.4,
       "p95_ms": 6066.5,
@@ -91,6 +110,7 @@
         70.7
       ],
       "usd_per_1m_msgs": 6045.24,
+      "usd_per_1m_msgs_basis": "measured tokens",
       "monthly_bill_100m": 604524,
       "p50_ms": 2965.5,
       "p95_ms": 5656.8,
@@ -102,8 +122,8 @@
   },
   "charts": {
     "quality_vs_cost.png": "macro_f1 vs usd_per_1m_msgs (log x), 95% bootstrap CI on F1",
-    "monthly_bill.png": "usd_per_1m_msgs \u00d7 100 (100M messages/month)",
-    "latency.png": "p50_ms and p95_ms",
+    "monthly_bill.png": "bill vs volume (log-log): always-on B200 floor, marginal-at-saturation line, break-evens vs GPT/Opus/Ultra",
+    "latency.png": "p50_ms and p95_ms (frontier via token router, answered rows only)",
     "title_card.png": "House Rules \u2014 Your safety policy, enforced.",
     "architecture_card.png": "from docs/img/architecture.svg"
   },

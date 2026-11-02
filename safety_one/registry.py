@@ -50,7 +50,7 @@ _MOCK_KEYS = (
 # --------------------------------------------------------------------------
 
 def _load_env_file() -> None:
-    """Populate os.environ defaults from safety-one/.env (gitignored).
+    """Populate os.environ defaults from `.env` at repo root (gitignored).
 
     Never overrides a variable that is already set, and never prints values.
     """

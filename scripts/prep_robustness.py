@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the obfuscation-robustness eval slice (safety-one/data/robustness/).
+"""Build the obfuscation-robustness eval slice (data/robustness/).
 
 Takes REAL labeled rows from the public eval sets (data/public/*.jsonl) and the
 NVIDIA test set (data/nvidia/test.jsonl), samples ~600 unsafe + ~600 safe

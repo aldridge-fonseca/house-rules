@@ -67,7 +67,25 @@ def score_receipts(path, keep=lambda r: True):
             "usd_per_1m_msgs": 1e6 * cost / len(pairs) if pairs else None}
 
 
-out = {}
+out = {"_notes": {
+    "prompts": ("Prompts differ by arm: 'final' and 'nano-untuned' use the one-line "
+                "training prompt (scripts/nano_ladder.py TRAIN_SYSTEM_PROMPT); "
+                "'ultra-untuned' zero-shot and the Ultra escalation use a minimal "
+                "label-only prompt (safety_one/providers/fireworks.py) with NO "
+                "policy text — the NVIDIA zero-shot baselines are policy-blind; "
+                "the frontier arms received the full shared policy + 26-category "
+                "taxonomy prompt (safety_one/providers/frontier.py "
+                "moderation_prompt())."),
+    "frontier_access": ("GPT-6.1 Sol and Claude Opus 5.5 were called through a "
+                        "third-party OpenAI-compatible token router at the "
+                        "router's published rates (baselines/prices.yaml: $2/$10 "
+                        "and $4/$20 per 1M tokens); latency includes the gateway "
+                        "hop and is over answered rows only."),
+    "disguised_v1": ("House Rules (deployment ier7tjje) and Ultra disguised_v1 "
+                     "receipts are from an earlier run of the same adapter and "
+                     "ARE shipped; the frontier scores from that run are not "
+                     "published (null below) — not recomputable."),
+}}
 for key, label, _ in SYSTEMS:
     out[key] = {"label": label}
     for ds in ("nvidia_test", "disguised_v1"):
@@ -82,15 +100,19 @@ json.dump(out, open("results/nvidia-v1/final_headline.json", "w"), indent=2)
 
 print(f"{'system':36s} | NVIDIA-policy test F1 | recall | over-block | refused | disguised F1 | $/1M | p50 ms")
 for key, v in out.items():
+    if key.startswith("_"):
+        continue
     a, d = v["nvidia_test"], v["disguised_v1"]
     if not a:
         print(f"{v['label']:36s} | (receipts not published)"); continue
     dtxt = f"{d['macro_f1']:5.1f}" if d else "  –  "
     print(f"{v['label']:36s} | {a['macro_f1']:5.1f} (n={a['n']}) | {a['unsafe_recall']:5.1f} | {a['over_block']:5.1f} | {a['refused_pct']:4.1f}% | "
           f"{dtxt} | {a['usd_per_1m_msgs']:,.0f} | {a['p50_ms'] or 0:,.0f}")
-print("– disguised F1: earlier run, per-case receipts not published — not recomputable")
+print("– disguised F1: House Rules / Nano / Ultra disguised receipts are from an")
+print("  earlier run of the same adapter (deployment ier7tjje) and ARE shipped;")
+print("  the frontier scores from that run are not published — not recomputable")
 
-W, H, x0, bw = 1100, 560, 330, 480
+W, H, x0, bw = 1100, 600, 330, 480
 s = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" font-family="Arial, sans-serif">',
      f'<rect width="{W}" height="{H}" fill="white"/><rect width="{W}" height="8" fill="#76B900"/>',
      '<text x="550" y="44" font-size="24" text-anchor="middle">Content moderation under NVIDIA safety policy — NVIDIA Nemotron on Fireworks AI</text>']
@@ -108,7 +130,10 @@ for title, ds, top in ((f"Held-out NVIDIA policy test ({n_of('nvidia_test')} row
         note = f'{m["macro_f1"]:.1f}   ${m["usd_per_1m_msgs"]:,.0f}/1M' + (f'   refused {m["refused_pct"]:.1f}%' if m["refused_pct"] >= 1 else "")
         s.append(f'<rect x="{x0}" y="{y}" width="{w:.1f}" height="30" rx="4" fill="{color}"/>')
         s.append(f'<text x="{x0 + w + 8:.1f}" y="{y + 21}" font-size="14" fill="{"#c62828" if m["refused_pct"] >= 5 else "#222"}">{note}</text>')
-s.append(f'<text x="{x0}" y="{H - 12}" font-size="12" fill="#555">Bars start at 50. Refusals scored as wrong. Green = NVIDIA on Fireworks, grey = closed frontier.</text></svg>')
+s.append(f'<text x="{x0}" y="{H - 42}" font-size="12" fill="#555">Bars start at 50. Refusals scored as wrong. Green = NVIDIA on Fireworks, grey = closed frontier.</text>')
+s.append(f'<text x="{x0}" y="{H - 26}" font-size="12" fill="#555">NVIDIA baselines are zero-shot with no policy text (policy-blind); frontier arms got the full policy prompt.</text>')
+s.append(f'<text x="{x0}" y="{H - 10}" font-size="12" fill="#555">Disguised panel: House Rules / Nano / Ultra receipts are from an earlier run (deployment ier7tjje); frontier receipts not published.</text>')
+s.append('</svg>')
 svg = Path("docs/img/final-headline.svg"); svg.write_text("\n".join(s), encoding="utf-8")
 from make_report import svg_to_png
 print("png:", svg_to_png(svg, svg.with_suffix(".png"), (W, H)))

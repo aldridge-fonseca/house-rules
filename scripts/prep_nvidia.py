@@ -20,7 +20,7 @@ Usage:
   python3 scripts/prep_nvidia.py --limit 5000    # smaller train subsets
   python3 scripts/prep_nvidia.py --limit 0       # all available train rows
 
-No paid/API calls. Reads HF_TOKEN / safety-one/.env only if the dataset ever goes
+No paid/API calls. Reads HF_TOKEN / `.env` only if the dataset ever goes
 gated (it is public, CC-BY-4.0).
 """
 
@@ -95,7 +95,7 @@ def log(msg: str) -> None:
 
 
 def load_env_token() -> str | None:
-    """HF_TOKEN from env or safety-one/.env (never printed)."""
+    """HF_TOKEN from env or `.env` at repo root (never printed)."""
     import os
 
     if os.environ.get("HF_TOKEN"):
@@ -111,7 +111,7 @@ def load_env_token() -> str | None:
 def download(url: str, dst: Path, token: str | None = None) -> None:
     if dst.exists() and dst.stat().st_size > 0:
         return
-    req = urllib.request.Request(url, headers={"User-Agent": "safety-one-prep"})
+    req = urllib.request.Request(url, headers={"User-Agent": "house-rules-data/1.0"})
     if token:
         req.add_header("Authorization", f"Bearer {token}")
     log(f"download {url} -> {dst.name}")
@@ -282,7 +282,7 @@ def fetch_wikimedia(rows: list[dict], out_dir: Path, max_n: int, width: int = 38
             r["image_local"] = str(dst.relative_to(DATA_DIR.parent.parent))
             return 1
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "safety-one-prep/1.0"})
+            req = urllib.request.Request(url, headers={"User-Agent": "house-rules-data/1.0"})
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = resp.read(2_000_000)
             if len(data) > 500:
