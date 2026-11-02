@@ -78,6 +78,24 @@ def test_cluster_boot_seeded_and_wider_than_point(tmp_path):
     assert "/home/" not in md
 
 
+def test_randomization_preserves_cluster_dependence():
+    # Two independent base messages: safe and unsafe. Ours is always right,
+    # baseline always wrong. Of four possible cluster swaps, exactly two
+    # retain |delta F1| = 1, so the exact two-sided p is 1/2.
+    point = {"macro_f1": 1.0, "unsafe_recall": 1.0, "over_block_rate": -1.0}
+    results = []
+    for variants in (1, 8):
+        ours = {"safe": np.zeros(variants, dtype=int),
+                "unsafe": np.full(variants, 3, dtype=int)}
+        base = {"safe": np.ones(variants, dtype=int),
+                "unsafe": np.full(variants, 2, dtype=int)}
+        results.append(sdc.cluster_rand_p(
+            ours, base, ["safe", "unsafe"], point, n_perm=10_000, seed=19))
+    assert results[0]["macro_f1"] == pytest.approx(0.5, abs=0.02)
+    # Duplicating correlated variants adds no independent evidence.
+    assert results[0] == results[1]
+
+
 def test_shipped_receipts_match_review_ballpark():
     """Live receipts: Ultra ~tie with wide CI; Nano large win; no abs paths."""
     run = sdc.RUN

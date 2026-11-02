@@ -10,3 +10,10 @@ Pillow>=10.2  # render_emoji.py + prep_vision.py image downscale
 ipykernel>=6.29  # kernel for notebooks/house_rules_eval.ipynb
 nbconvert>=7.16  # headless notebook execution (judge runs top-to-bottom, $0)
 matplotlib>=3.8  # notebook charts only; repo report charts stay dependency-free SVG
+numpy>=1.26  # stats_vs_frontier.py / stats_disguised_clustered.py import it directly
+# Optional (only scripts/train_api_sft.py): the `training` package from the
+# public Fireworks AI cookbook. Not listed here — heavyweight training deps.
+# Install pinned:
+#   git clone https://github.com/fw-ai/cookbook.git cookbook
+#   git -C cookbook checkout 57968a2237b663be33078d2747a28463983ae134
+#   pip install -e cookbook/training

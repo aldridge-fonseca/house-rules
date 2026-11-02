@@ -159,9 +159,13 @@ python scripts/deploy_create.py --model accounts/$ACCT/models/safety-one-nano-sa
 python scripts/deploy_create.py --model accounts/$ACCT/models/safety-one-glimmer-safety --auto-stop-minutes 30 --execute
 
 # Upload-blocked fallback that needs no dataset upload at all (data streams
-# from the client): Serverless/Dedicated Training API.
+# from the client): Serverless/Dedicated Training API, via the optional
+# `training` package from the public Fireworks AI cookbook (not in
+# requirements.txt; heavyweight deps). Install once, pinned:
+#   git clone https://github.com/fw-ai/cookbook.git cookbook
+#   git -C cookbook checkout 57968a2237b663be33078d2747a28463983ae134
+#   pip install -e cookbook/training
 #   Glimmer chat SFT, FREE until 2026-11-30 (serverless pool):
-#     pip install -e /tmp/fireworks-cookbook/training
 #     python -m examples.sft.muse_glimmer_starter prepare --file $TRAIN_FILE --run-id safety-glimmer-v1
 #     python -m examples.sft.muse_glimmer_starter launch --surface serverless --file $TRAIN_FILE --run-id safety-glimmer-v1
 #   Nano chat SFT, dedicated shape (bills ~2x B200 GPU-time, unverified price):

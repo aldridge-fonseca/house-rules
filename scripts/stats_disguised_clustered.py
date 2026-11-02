@@ -19,6 +19,9 @@ Nano untuned, and the clean-up ablation ``final-rawtext``). Point estimates use
 the same label semantics as ``safety_one.eval.metrics.evaluate`` (empty /
 unparseable preds match neither class). McNemar is still the exact row-level
 test (independence assumption); the cluster bootstrap only widens the CI.
+A seeded paired cluster randomization test additionally swaps the
+ours/baseline prediction vectors *within* each base-message cluster, giving a
+two-sided p-value that does not assume variant rows are independent.
 """
 from __future__ import annotations
 
@@ -45,6 +48,7 @@ BASELINES = (
     ("final-rawtext", "final with clean-up OFF"),
 )
 N_BOOT, SEED = 2_000, 0
+N_PERM = 10_000
 DIFF_METRICS = ("macro_f1", "unsafe_recall", "over_block_rate")
 
 
@@ -117,15 +121,68 @@ def metric_from_counts(c: np.ndarray, metric: str) -> float:
     raise ValueError(metric)
 
 
+def _metric_batch(C: np.ndarray, metric: str) -> np.ndarray:
+    """Vectorized metric_from_counts over (n, 6) confusion-count matrices."""
+    C = np.asarray(C, dtype=np.float64)
+    ss, su, us, uu, sx, ux = (C[:, i] for i in range(6))
+
+    def f1(tp, fp, fn):
+        den = 2 * tp + fp + fn
+        return np.where(den > 0, 2 * tp / np.maximum(den, 1), 0.0)
+
+    if metric == "macro_f1":
+        return (f1(ss, us, su + sx) + f1(uu, su, us + ux)) / 2
+    if metric == "unsafe_recall":
+        den = uu + us + ux
+        return np.where(den > 0, uu / np.maximum(den, 1), 0.0)
+    if metric == "over_block_rate":
+        safe_n = ss + su + sx
+        return np.where(safe_n > 0, su / np.maximum(safe_n, 1), 0.0)
+    raise ValueError(metric)
+
+
+def cluster_rand_p(oc: dict[str, np.ndarray], bc: dict[str, np.ndarray],
+                   ok: list[str], point: dict[str, float],
+                   *, n_perm: int, seed: int) -> dict[str, float]:
+    """Paired cluster randomization (sign-flip) test, two-sided.
+
+    Under the null the two systems' predictions are exchangeable within each
+    base-message cluster, so each replicate independently swaps the whole
+    cluster's ours/baseline assignment. Swapping preserves the cluster's total
+    count vector, so permuted ours/baseline totals are (total ± Σ s_c d_c)/2.
+    """
+    deltas = np.stack([
+        np.bincount(oc[c], minlength=6).astype(np.int64)
+        - np.bincount(bc[c], minlength=6).astype(np.int64)
+        for c in ok
+    ])
+    total = (np.bincount(np.concatenate([oc[c] for c in ok]), minlength=6)
+             + np.bincount(np.concatenate([bc[c] for c in ok]), minlength=6))
+    rng = np.random.default_rng(seed + 1)
+    signs = rng.integers(0, 2, size=(n_perm, len(ok))) * 2 - 1
+    delta = signs @ deltas
+    ca_p = (total + delta) // 2
+    cb_p = total - ca_p
+    out = {}
+    for m in DIFF_METRICS:
+        pd = _metric_batch(ca_p, m) - _metric_batch(cb_p, m)
+        n_ge = int(np.sum(np.abs(pd) >= abs(point[m]) - 1e-12))
+        out[m] = (1 + n_ge) / (n_perm + 1)
+    return out
+
+
 def cluster_boot(ours: dict[str, dict], base: dict[str, dict],
-                 clusters: dict[str, list[str]], *, n_boot: int, seed: int) -> dict:
+                 clusters: dict[str, list[str]], *, n_boot: int, seed: int,
+                 n_perm: int = N_PERM) -> dict:
     ok = sorted(
         c for c, ids in clusters.items()
         if all(i in ours and i in base for i in ids)
     )
     if not ok:
         return {"n_clusters": 0, "n_rows": 0, "metric": "macro_f1",
-                "difference": None, "ci95": [None, None], "differences": {}}
+                "difference": None, "ci95": [None, None], "differences": {},
+                "mcnemar_p": None, "rand_p": None, "rand_p_min": None,
+                "discordant_system_wins_losses": None}
     oc = {c: np.array([_state(ours[i]) for i in clusters[c]], dtype=np.int64) for c in ok}
     bc = {c: np.array([_state(base[i]) for i in clusters[c]], dtype=np.int64) for c in ok}
     ca = np.bincount(np.concatenate([oc[c] for c in ok]), minlength=6)
@@ -157,6 +214,9 @@ def cluster_boot(ours: dict[str, dict], base: dict[str, dict],
         [ours[i] for c in ok for i in clusters[c]],
         metric="macro_f1", n_boot=1, seed=seed,
     )
+    rand_p = cluster_rand_p(oc, bc, ok, point, n_perm=n_perm, seed=seed)
+    for k, m in enumerate(DIFF_METRICS):
+        differences[m]["rand_p"] = rand_p[m]
     return {
         "n_clusters": len(ok),
         "n_rows": n_rows,
@@ -165,13 +225,16 @@ def cluster_boot(ours: dict[str, dict], base: dict[str, dict],
         "ci95": differences["macro_f1"]["ci95"],
         "differences": differences,
         "mcnemar_p": mc["mcnemar_p"],
+        "rand_p": rand_p,
+        "rand_p_min": 1 / (n_perm + 1),
         "discordant_system_wins_losses": mc["discordant_system_wins_losses"],
         "ours_macro_f1": metric_from_counts(ca, "macro_f1"),
         "baseline_macro_f1": metric_from_counts(cb, "macro_f1"),
     }
 
 
-def build(*, run_dir: Path, disguised: Path, n_boot: int, seed: int) -> dict:
+def build(*, run_dir: Path, disguised: Path, n_boot: int, seed: int,
+          n_perm: int = N_PERM) -> dict:
     eval_rows, clusters = load_disguised(disguised)
     keep = set(eval_rows)
     ours = load_receipts(run_dir / f"{OURS}.jsonl", keep)
@@ -179,10 +242,15 @@ def build(*, run_dir: Path, disguised: Path, n_boot: int, seed: int) -> dict:
         "generated_by": "scripts/stats_disguised_clustered.py",
         "seed": seed,
         "n_boot": n_boot,
+        "n_perm": n_perm,
         "cluster_by": "meta.source_row_id",
         "scoring": (
             "evaluate()-compatible labels; empty/unparseable preds match neither "
-            "class. Bootstrap resamples base-message clusters with replacement."
+            "class. Bootstrap resamples base-message clusters with replacement. "
+            "rand_p is a seeded two-sided paired cluster randomization test: "
+            "each replicate independently swaps the ours/baseline prediction "
+            "vectors within a base-message cluster (seed+1 stream); row-level "
+            "McNemar is retained only as a labeled diagnostic."
         ),
         "inputs": {
             "disguised": _rel(disguised),
@@ -197,7 +265,8 @@ def build(*, run_dir: Path, disguised: Path, n_boot: int, seed: int) -> dict:
         entry = {
             "baseline_label": label,
             "baseline_receipt": _rel(run_dir / f"{name}.jsonl"),
-            **cluster_boot(ours, base, clusters, n_boot=n_boot, seed=seed),
+            **cluster_boot(ours, base, clusters, n_boot=n_boot, seed=seed,
+                           n_perm=n_perm),
         }
         # Also record the row-level CI from ours_summary for side-by-side disclosure.
         doc["comparisons"][f"ours_vs_{name}"] = entry
@@ -219,16 +288,19 @@ def render(doc: dict) -> str:
         "Bootstrap resamples **base messages** (`meta.source_row_id`), seed "
         f"{doc['seed']}, {doc['n_boot']:,} resamples. "
         "Row-level CIs in `results/nvidia-v1/ours_summary.json` are tighter "
-        "because they treat variant rows as independent.",
+        "because they treat variant rows as independent. `rand p` is a seeded "
+        f"paired cluster randomization test ({doc['n_perm']:,} permutations, "
+        "two-sided): within each base message the ours/baseline prediction "
+        "vectors are swapped, so it does not assume variant independence.",
         "",
         "| comparison | clusters | rows | Δ macro-F1, pp [95% CI] | "
         "Δ unsafe recall, pp [95% CI] | Δ over-block, pp [95% CI] | "
-        "McNemar p (row-level; ours/base wins) |",
-        "|---|---:|---:|---:|---:|---:|---:|",
+        "rand p ΔF1 (cluster) | McNemar p (row-level diagnostic; ours/base wins) |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for key, c in doc["comparisons"].items():
         if not c.get("n_clusters"):
-            L.append(f"| {c['baseline_label']} | 0 | 0 | – | – | – | – |")
+            L.append(f"| {c['baseline_label']} | 0 | 0 | – | – | – | – | – |")
             continue
         d = c["differences"]
         cell = lambda m: (  # noqa: E731
@@ -237,15 +309,20 @@ def render(doc: dict) -> str:
         wins, losses = c.get("discordant_system_wins_losses") or [None, None]
         p = c.get("mcnemar_p")
         p_s = "–" if p is None else f"{p:.2g}"
+        rp = (c.get("rand_p") or {}).get("macro_f1")
+        rp_s = "–" if rp is None else (
+            f"≤{c['rand_p_min']:.0e}" if rp <= c["rand_p_min"] else f"{rp:.2g}")
         L.append(
             f"| ours − {c['baseline_label']} | {c['n_clusters']:,} | {c['n_rows']:,} | "
             f"{cell('macro_f1')} | {cell('unsafe_recall')} | {cell('over_block_rate')} | "
-            f"{p_s} ({wins}/{losses}) |"
+            f"{rp_s} | {p_s} ({wins}/{losses}) |"
         )
     L += [
         "",
         "- Positive Δ macro-F1 / unsafe recall = ours better; positive Δ over-block = "
         "ours blocks more safe content.",
+        "- `rand p` (cluster-level) is the primary significance check; McNemar is "
+        "kept only as a row-level diagnostic and assumes row independence.",
         "- Conclusions vs Ultra (tie) and vs untuned Nano (large win) are unchanged "
         "from the row-level tests; only the CI width grows.",
         "- Gold labels on this set inherit the six source benchmarks' own policies "
@@ -262,10 +339,11 @@ def main(argv=None) -> int:
     ap.add_argument("--disguised", type=Path, default=DISGUISED)
     ap.add_argument("--out-dir", type=Path, default=OUT_DIR)
     ap.add_argument("--n-boot", type=int, default=N_BOOT)
+    ap.add_argument("--n-perm", type=int, default=N_PERM)
     ap.add_argument("--seed", type=int, default=SEED)
     args = ap.parse_args(argv)
     doc = build(run_dir=args.run_dir, disguised=args.disguised,
-                n_boot=args.n_boot, seed=args.seed)
+                n_boot=args.n_boot, seed=args.seed, n_perm=args.n_perm)
     args.out_dir.mkdir(parents=True, exist_ok=True)
     (args.out_dir / "disguised_clustered.json").write_text(
         json.dumps(doc, indent=1) + "\n", encoding="utf-8")
@@ -278,6 +356,7 @@ def main(argv=None) -> int:
         lo, hi = c["ci95"]
         print(f"{key}: clusters={c['n_clusters']} ΔF1 {100 * c['difference']:+.1f} "
               f"[{100 * lo:+.1f}, {100 * hi:+.1f}] "
+              f"rand p={c['rand_p']['macro_f1']:.2g} "
               f"McNemar p={c['mcnemar_p']:.2g}")
     print(f"wrote {_rel(args.out_dir)}/disguised_clustered.json + .md")
     return 0

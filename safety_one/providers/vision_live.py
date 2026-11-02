@@ -7,8 +7,8 @@ pricing and lenient label parsing are inherited from it):
 - SuperVLVisionProvider: NVIDIA Nemotron 3.5 Super VL 120B-A12B NVFP4 on an
   ON-DEMAND deployment (4x B200 = $52/h, billed per GPU-second —
   https://fireworks.ai/pricing). Model path comes from env
-  FIREWORKS_VISION_MODEL (accounts/<acct>/deployments/<id>, set after the
-  coordinator runs scripts/vision_deploy.sh). Sends OpenAI-compatible
+  FIREWORKS_VISION_MODEL (accounts/<acct>/deployments/<id>, set after
+  scripts/vision_deploy.sh creates the deployment). Sends OpenAI-compatible
   image_url data URIs with an explicit extension->MIME map, strict JSON
   Schema output with an unstructured fallback on HTTP 400, and allocates
   per-verdict cost from deployment GPU-hours (wall-clock upper bound).

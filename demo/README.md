@@ -46,8 +46,11 @@ The meters show **two** $/1M numbers per lane, clearly labeled:
 
 1. **this 100-message demo run (low utilization, GPU time ÷ 100 msgs)** — raw
    spend from the LIVE-RECORDED cache (`demo/cached/record_summary.json` /
-   `results.jsonl`). Ours ≈ **$2,809/1M** because a dedicated B200 ($13/h) ran
-   ~79 s of wall-clock for only 100 low-concurrency messages. GPT billed ≈
+   `results.jsonl`). Ours ≈ **$2,809/1M** is the *allocated per-verdict*
+   total ($0.2809 — GPU seconds are attributed per model call, so
+   rule-decided rows carry no allocation); the dedicated B200's rental over
+   the whole ~79 s window was **$0.2862** (`gpu_usd` in `record_summary.json`)
+   because only 100 low-concurrency messages kept it hot. GPT billed ≈
    **$1,541/1M** on the same 100.
 2. **production basis — marginal $/1M at saturation** (from `results/`) —
    GPU rental **amortized at full utilization** on the held-out NVIDIA test

@@ -9,9 +9,11 @@
 
 Both arms used the full shared policy + 26-category taxonomy prompt
 (`safety_one/providers/frontier.py` `moderation_prompt()`), `response_format: json_object`,
-temperature 0, and default concurrency **4**. Latency includes the gateway hop. Cost is
-returned `usage` × the router rates above — an unpriced model reports `cost_basis: unknown`,
-never a guessed number. Paid calls reserve+settle in the shared frontier budget ledger.
+and temperature 0. Runner default concurrency is **4** (`baselines/run_frontier_router.py`);
+the actual `--concurrency` flag used for the shipped receipts was **not retained**. Latency
+includes the gateway hop. Cost is returned `usage` × the router rates above — an unpriced
+model reports `cost_basis: unknown`, never a guessed number. Paid calls reserve+settle in
+the shared frontier budget ledger.
 
 **Prompt asymmetry vs NVIDIA arms:** GPT/Opus received the full policy prompt
 (~390–725 extra input tokens vs the NVIDIA label-only / one-line training prompts). The

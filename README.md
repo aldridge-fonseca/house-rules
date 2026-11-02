@@ -72,7 +72,7 @@ Every claim below cites a receipt in this repo;
 
 | What ran | Fireworks surface | NVIDIA model / asset | Receipt |
 |---|---|---|---|
-| LoRA SFT of the specialist — rank 8, alpha 32, 1 epoch, lr 1e-4, batch 32 on `data/nvidia/filtered/train_sft.jsonl` (19,830 rows); trainer job id, wall-clock and train cost **not recorded** | **Training API** — `scripts/train_api_sft.py --job nano` | Nemotron Nano 3 30B-A3B | promoted model `…/models/safety-one-nano-safety` in `results/nvidia-v1/ours_summary.json`, `…/final.jsonl` |
+| LoRA SFT of the specialist — rank 8, alpha 32, 1 epoch, lr 1e-4, batch 32 on `data/nvidia/filtered/train_sft.jsonl` (19,830 recipe-input rows — exact consumed count, trainer job id, wall-clock and train cost **not recorded**) | **Training API** — `scripts/train_api_sft.py --job nano` | Nemotron Nano 3 30B-A3B | promoted model `…/models/safety-one-nano-safety` in `results/nvidia-v1/ours_summary.json`, `…/final.jsonl` |
 | Tuned specialist + untuned-Nano ablation on dedicated deployments (1× B200 each) | **On-demand deployments** — `scripts/deploy_create.py` | Nemotron Nano 3 30B-A3B (base + LoRA) | deployment ids `qd2gx85j` / `o4ubjdmu` / `ier7tjje` in `results/nvidia-v1/ours_timing.json`, `…/*.jsonl` |
 | Large zero-shot baseline + gray-zone escalation target | **Serverless inference** (per-token) | Nemotron 3 Ultra 550B | `results/nvidia-v1/ultra-untuned.jsonl`; escalated rows in `results/nvidia-v1/final.jsonl` |
 | Train + held-out eval data | — | Nemotron-3.5 Content Safety Dataset (CC-BY-4.0); Aegis 2.0 test subset | `data/nvidia/manifest.json`, `data/README.md` |
@@ -125,13 +125,18 @@ McNemar tests on id-matched rows (`results/nvidia-v1/ours_summary.json`,
   robustness set, not a second NVIDIA-policy set. 320 WildGuard-derived rows
   ship redacted (stable row ids; scored from receipts). Because variants of
   one base message are correlated, the row-level CIs below are paired with
-  clustered by-base-message CIs (300 clusters, 2,000 resamples, seed 0) in
-  [`results/stats/disguised_clustered.md`](results/stats/disguised_clustered.md);
-  the intervals widen — e.g. ours − Ultra is −0.0 [−2.9, +2.8] clustered vs
-  [−1.6, +1.6] row-level — and every conclusion is unchanged. House Rules and
-  Ultra `disguised_v1` receipts are from an earlier run of the same adapter
-  (deployment `ier7tjje`); the frontier receipts from that run were not
-  retained — see the footnote under the disguised table.
+  clustered by-base-message CIs (300 clusters, 2,000 resamples, seed 0) and a
+  seeded paired cluster randomization test (10,000 permutations, two-sided) in
+  [`results/stats/disguised_clustered.md`](results/stats/disguised_clustered.md)
+  — the primary significance check on this set; row McNemar is kept as a
+  labeled diagnostic. The intervals widen — e.g. ours − Ultra is −0.0
+  [−2.9, +2.8] clustered, rand p = 0.99, vs [−1.6, +1.6] row-level — and
+  every conclusion is unchanged. House Rules' `disguised_v1` receipts are
+  from an earlier run of the same adapter on deployment `ier7tjje`;
+  Ultra is serverless per-token, with no dedicated deployment, while
+  Nano untuned's receipts ran later on `o4ubjdmu`.
+  The frontier receipts from that earlier run were not retained — see the
+  footnote under the disguised table.
 
 ### NVIDIA-policy held-out test (n = 3,340)
 
@@ -162,11 +167,11 @@ method below):
   h) whether it serves 1 message or 178M, plus $2.87/1M of Ultra escalation
   token spend (`final` token_usd $0.0096 ÷ 3,340 rows).
 
-| Messages/mo | House Rules, always-on 1× B200 | GPT-6.1 Sol | Claude Opus 5.5 | Honest result |
-|---|---:|---:|---:|---|
-| 1M | $9,493 | $1,820 | $6,045 | **GPT is 5.2× cheaper** than ours; Opus 1.6× |
-| 10M | $9,519 | $18,196 | $60,452 | ours 1.9× cheaper than GPT, 6.4× than Opus |
-| 100M | $9,777 | $181,964 | $604,524 | ours 18.6× / 61.8× cheaper |
+| Messages/mo | House Rules, always-on 1× B200 | Nano untuned, always-on 1× B200 | Ultra zero-shot, serverless | GPT-6.1 Sol | Claude Opus 5.5 | Honest result |
+|---|---:|---:|---:|---:|---:|---|
+| 1M | $9,493 | $9,490 | $108 | $1,820 | $6,045 | Ultra cheapest; **GPT is 5.2× cheaper** than ours, Opus 1.6× |
+| 10M | $9,519 | $9,490 | $1,079 | $18,196 | $60,452 | Ultra cheapest; ours 1.9× cheaper than GPT, 6.4× than Opus |
+| 100M | $9,777 | $9,490 | $10,790 | $181,964 | $604,524 | ours ≈ Nano's GPU floor, below Ultra; 18.6× / 61.8× cheaper than GPT / Opus |
 
 Break-even: always-on House Rules beats GPT-6.1 Sol above **≈5.2M msgs/mo**
 and Opus 5.5 above **≈1.6M msgs/mo** ($9,490 ÷ per-1M price gap); below
@@ -185,11 +190,12 @@ was **not measured** here.
 *Quality vs cost on the 3,340-row held-out test, refusals scored as wrong
 (Opus refused 13.0%, GPT 1.9%).*
 
-![Monthly bill at 100M messages/month](docs/video/monthly_bill.png)
+![Monthly bill vs message volume](docs/video/monthly_bill.png)
 
-*Marginal-rate bill at 100M msgs/mo (full-utilization basis): $5.6K vs
-$182K–$605K. The always-on bill — one dedicated B200 kept hot — is ≈$9.8K;
-see the table above.*
+*Monthly bill vs volume (log–log): the always-on GPU floor keeps House Rules
+≈$9.5–9.8K at every volume — $9,777 at 100M — while token-billed GPT and
+Opus grow linearly to $182K / $605K and serverless Ultra stays cheaper below
+≈90M msgs/mo. See the table above.*
 
 ![p50 and p95 latency per system](docs/video/latency.png)
 
@@ -204,10 +210,13 @@ rows only).*
 | Nemotron Nano 3 30B, untuned | 63.3 | 94.0 | 62.2 | 0.0 | 775 | 1,086 | $63 | $63 / $627 / $6,270 |
 | Nemotron 3 Ultra 550B, zero-shot | 82.0 | 83.8 | 19.9 | 0.0 | 713 | 1,013 | $148 | $148 / $1,484 / $14,840 |
 
-Every cell above is computed from shipped receipts
-(`results/nvidia-v1/ours_summary.json`). The bill column repeats the marginal
-at-saturation rate; an always-on dedicated deployment adds the ≈$9,490/mo
-GPU floor described above.
+Every metric cell above is computed from shipped receipts
+(`results/nvidia-v1/ours_summary.json`); the House Rules $/1M additionally
+assumes the earlier run's GPU allocation from retained metadata — its timing
+file is not shipped (see Ablations). The bill column repeats the marginal
+at-saturation rate; for an always-on dedicated deployment, replace the
+amortized GPU allocation with the ≈$9,490/mo floor described above, then add
+token spend (Ultra is serverless — no floor).
 
 > **Frontier models on disguised_v1 — earlier run, per-case receipts not
 > published** (not verifiable from this repo; excluded from all asserted
@@ -236,11 +245,12 @@ NVIDIA-baseline rows: `results/nvidia-v1/ours_summary.json`
 `results/stats/vs_frontier.json` / `vs_frontier.md` (10,000 resamples, seed 0,
 refusals scored as wrong; GPT 764/45 and Opus 844/44 discordant wins/losses).
 Disguised rows above are row-level CIs; the clustered by-base-message
-intervals in
+intervals and seeded cluster randomization p-values (10,000 permutations;
+primary significance check, row McNemar is a labeled diagnostic) in
 [`results/stats/disguised_clustered.md`](results/stats/disguised_clustered.md)
 are wider but reach the same conclusions: ours − Ultra −0.0 [−2.9, +2.8],
-ours − Nano untuned +18.7 [+14.1, +23.4], ours − clean-up-off +8.0 [+5.9,
-+10.1].
+rand p = 0.99 — no detected difference; ours − Nano untuned +18.7 [+14.1, +23.4],
+rand p ≤ 1e-4; ours − clean-up-off +8.0 [+5.9, +10.1], rand p ≤ 1e-4.
 
 Secondary metrics vs frontier (`results/stats/vs_frontier.md`): Δ unsafe
 recall **+27.7** [+25.9, +29.4] vs GPT and **+30.0** [+28.2, +31.8] vs Opus.
@@ -268,14 +278,18 @@ doing its job by absorbing them without dragging down the cheap lanes.
 **Ablations.** Removing normalization (clean-up) costs **+8.0 macro-F1** on
 disguised attacks — base64-wrapped unsafe recall collapses to 0.7%. The
 specialist-only ablation (no rules, router, or escalation) is **+0.2** [−0.4,
-+0.7], n.s. on-policy — but escalation cuts over-block 7.3 → 5.5% and pays for
-itself on adversarial and mixed-policy inputs. The untuned Nano rows are the
-LoRA ablation: fine-tuning is worth **+12.6** on-policy and **+18.7**
-disguised. The clean-up ablation is cross-run: `final`'s disguised rows come
++0.7], n.s. on-policy: the full pipeline's evidenced exchange there is
+over-block **7.3 → 5.5%** in return for lower recall (98.0 → 97.6), higher
+cost ($52.2 → $56.2/1M) and a worse tail (p95 944 → 1,193 ms). No
+specialist-only run on `disguised_v1` is shipped, so escalation's value on
+adversarial inputs is **unverified**. The tuned arm exceeds the policy-blind
+untuned Nano arm by **+12.6** on-policy and **+18.7** disguised; this
+comparison does not isolate fine-tuning from policy access. The clean-up
+ablation is cross-run: `final`'s disguised rows come
 from the earlier run on deployment `ier7tjje` while `final-rawtext` ran
 later on `qd2gx85j` with the current code (only `provider_text` differs);
-the $69/1M disguised rate uses the earlier run's GPU allocation ($60/1M
-calls), whose timing file is not shipped.
+the $69/1M disguised rate assumes the earlier run's GPU allocation ($60/1M
+calls) from retained metadata — its timing file is not shipped.
 
 ![Headline chart](docs/img/final-headline.png)
 
@@ -339,9 +353,10 @@ specialist does not need.
    vision lane; non-English → multilingual lane; otherwise → specialist.
 4. **Specialist.** NVIDIA Nemotron Nano 3 30B-A3B with a LoRA adapter —
    rank 8, alpha 32, 1 epoch, lr 1e-4, batch 32 on
-   `data/nvidia/filtered/train_sft.jsonl` (19,830 rows), per the
+   `data/nvidia/filtered/train_sft.jsonl` (19,830 input rows), per the
    `scripts/train_api_sft.py --job nano` recipe on the Fireworks Training API;
-   the exact trained-row count and trainer job id were **not recorded** —
+   the count the trainer actually consumed, the job id, wall-clock and cost
+   were **not recorded** —
    served on a dedicated Fireworks deployment (1× B200). `config/train.yaml`
    is the earlier draft for the unused managed-SFT path. The multilingual
    lane uses the same tuned model; the vision lane is a Nemotron 3.5 Super VL
@@ -379,7 +394,8 @@ patterns are declarative too.
 **With retraining — a new policy needs labeled data and a LoRA pass:**
 
 1. Label rows under the new taxonomy (`scripts/prep_nvidia.py`-style; the
-   shipped adapter used 19,830 train + 2,479 dev rows).
+   shipped adapter's recipe input was 19,830 train + 2,479 dev rows; the count
+   actually consumed was **not recorded**).
 2. `python scripts/train_api_sft.py --job nano` — the shipped adapter's
    recipe on the Fireworks Training API; its wall-clock and cost were
    **not recorded**.
@@ -411,13 +427,16 @@ keys).
 Read the meters the right way:
 
 - **Raw demo spend looks worse for us, and it's real:** $0.2809 vs $0.1541
-  for 100 messages ($2,809 vs $1,541 per 1M). One dedicated GPU ($13/h) ran
-  ~79 s to serve only 100 calls — very low utilization, and the meter counts
-  the whole window. The **marginal production basis** in the tables above —
+  for 100 messages ($2,809 vs $1,541 per 1M) — ours is the *allocated
+  per-verdict* cost; the dedicated GPU's rental over the whole ~79 s window
+  was $0.2862 (rule-decided rows carry no per-verdict allocation, but the
+  GPU bills their time too). One dedicated GPU ($13/h) ran ~79 s to serve
+  only 100 calls — very low utilization. The **marginal production basis**
+  in the tables above —
   full-utilization amortization measured on the 3,340-row runs — is **$56 vs
   $1,820 per 1M** (`results/stats/vs_frontier.json`), with the always-on GPU
-  floor on top as shown in the bill table. All these numbers are true; they
-  measure different things.
+  floor replacing amortized GPU allocation as shown in the bill table.
+  These numbers measure different things.
 - **The p95 tail is Ultra escalation, not the specialist:** ours p50
   **178 ms** vs GPT 2,532 ms, but p95 **11,300 ms** vs 5,659 ms because 7/100
   demo rows escalated to Ultra serverless (11–35 s each, cold/queued). Every
@@ -431,8 +450,9 @@ Read the meters the right way:
   earlier run** whose per-case receipts are not published (87.8 vs 82.0
   macro-F1; unverifiable here, see the footnote under the disguised table).
   Zero-shot Ultra ties us on disguised text (paired Δ −0.0, row-level CI
-  [−1.6, +1.6], clustered by-base-message CI [−2.9, +2.8] in
-  `results/stats/disguised_clustered.md` — same conclusion). House
+  [−1.6, +1.6], clustered by-base-message CI [−2.9, +2.8], cluster
+  randomization p = 0.99 in `results/stats/disguised_clustered.md` — same
+  conclusion). House
   Rules gets higher unsafe recall (89.4 vs 81.8/83.8) at the price of
   over-blocking one in four safe disguised rows (25.3%). If your traffic is
   mostly adversarial text and recall-tolerant, the frontier model may be the
@@ -440,8 +460,13 @@ Read the meters the right way:
 - **Over-block is the price of recall.** 5.5% on-policy, 25.3% under
   disguise. We over-block significantly more than GPT-6.1 Sol on-policy
   (+4.4 pp [+2.5, +6.3]) — that's the disclosed cost of 97.6% unsafe recall.
-  The operating point was chosen for recall on the dev split; the threshold
-  and gray zone are config, not constants.
+  The headline run used the model's generated label
+  (`calibration.unsafe_threshold: null` in `config/router.yaml`) and the
+  default gray-zone band, which the config itself marks as placeholder.
+  Dev-fitted variants (`specialist-cal` / `full-cal` in
+  `config/systems.yaml`, fitted by `scripts/calibrate_gate.py` maximizing
+  dev **macro-F1**, not recall) exist but are not what produced the shipped
+  receipts; threshold and gray zone are config, not constants.
 - **Dedicated capacity has a floor.** The $56/1M rate amortizes $13/h over
   measured run wall-clock at concurrency 48 and excludes spin-up/idle. An
   always-on deployment costs ≈$9,490/month regardless of volume, so below
@@ -473,10 +498,12 @@ Read the meters the right way:
   earlier run); refusals are scored as incorrect. The refusal rate is itself
   the finding — and the refusals-excluded check above shows it isn't what
   wins for us.
-- **Escalation adds little on-policy** (+0.2 macro-F1 [−0.4, +0.7], p = 0.73;
-  it does cut over-block 7.3 → 5.5% and escalates only 3.2% of rows). It
-  earned its keep on adversarial and mixed-policy inputs, not on the
-  NVIDIA-policy test.
+- **Escalation adds little on-policy** (+0.2 macro-F1 [−0.4, +0.7], p = 0.73,
+  escalating 3.2% of rows). The evidenced exchange is over-block 7.3 → 5.5%
+  in return for lower recall (98.0 → 97.6), higher cost ($52.2 → $56.2/1M)
+  and a worse p95 tail (944 → 1,193 ms) vs specialist-only. Whether it pays
+  off on adversarial or mixed-policy inputs is **unverified** — no
+  specialist-only `disguised_v1` run is shipped.
 - **Human review.** This is a moderation component, not a trust-and-safety
   program; high-impact decisions still need appeal and human review paths.
 - **Vision lane.** Image routing is implemented and unit-tested
@@ -524,18 +551,32 @@ python scripts/stats_disguised_clustered.py # -> results/stats/disguised_cluster
 python demo/server.py                  # http://127.0.0.1:8787/
 python demo/server.py --live           # real calls, needs keys
 
-# Eval any system on the prepared datasets (live; needs .env keys)
+# Recreate the headline arm on the prepared datasets (live; needs .env keys)
+export FIREWORKS_API_KEY=...                                   # live calls
+export FIREWORKS_MODEL=accounts/<acct>/deployments/<id>        # tuned-Nano deployment
 python scripts/run_eval.py \
   --data data/nvidia/test.jsonl \
   --data data/frozen/disguised_v1.jsonl \
-  --system full=safety_one.registry:full \
+  --system final=scripts.nano_ladder:full \
   --out results --run myrun --concurrency 48
 ```
+
+`scripts.nano_ladder:full` is the factory the shipped `final` receipts used:
+same `full` wiring as the registry, but the specialist/multilingual roles get
+the one-line training prompt + compact-label parser the LoRA was trained on,
+and emoji-dense text routes to the text specialist (every eval row is
+text-only). A generic `--system full=safety_one.registry:full` arm instead
+uses the shared provider prompt — a different input distribution, not the
+headline arm. The untuned-Nano baseline is `scripts.nano_ladder:nano-untuned`
+with `NANO_BASE_MODEL` set to the base deployment; see
+`config/systems.yaml` for the rest of the registry ladder.
 
 Frontier router arms are driven by `baselines/run_frontier_router.py`
 (`ROUTER_BASE_URL`, `ROUTER_API_KEY`, `FRONTIER_MODEL_{A,B}`). Training/deploy
 recipes live in `scripts/train_api_sft.py` (Training API path used for the
-shipped adapter), `scripts/train_launch.sh` (managed-SFT draft, not used),
+shipped adapter — needs the optional training-cookbook install described in
+[docs/FIREWORKS_NVIDIA.md](docs/FIREWORKS_NVIDIA.md), not in
+`requirements.txt`), `scripts/train_launch.sh` (managed-SFT draft, not used),
 `scripts/deploy_create.py`, and `scripts/vision_deploy.sh`; data preparation
 in `scripts/prep_*.py`. See `config/systems.yaml` for the full system registry
 (pipeline ladder `+rules` → `+router` → `+escalation`/`full`, single-provider

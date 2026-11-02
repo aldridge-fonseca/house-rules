@@ -81,10 +81,12 @@ out = {"_notes": {
                         "router's published rates (baselines/prices.yaml: $2/$10 "
                         "and $4/$20 per 1M tokens); latency includes the gateway "
                         "hop and is over answered rows only."),
-    "disguised_v1": ("House Rules (deployment ier7tjje) and Ultra disguised_v1 "
-                     "receipts are from an earlier run of the same adapter and "
-                     "ARE shipped; the frontier scores from that run are not "
-                     "published (null below) — not recomputable."),
+    "disguised_v1": ("Disguised NVIDIA-arm receipts ARE shipped, with per-arm "
+                     "provenance: House Rules (final) on deployment ier7tjje; "
+                     "Nano untuned on o4ubjdmu; Ultra serverless "
+                     "nemotron-3-ultra-nvfp4. Frontier disguised scores from "
+                     "that earlier run are not published (null below) — not "
+                     "recomputable."),
 }}
 for key, label, _ in SYSTEMS:
     out[key] = {"label": label}
@@ -108,9 +110,9 @@ for key, v in out.items():
     dtxt = f"{d['macro_f1']:5.1f}" if d else "  –  "
     print(f"{v['label']:36s} | {a['macro_f1']:5.1f} (n={a['n']}) | {a['unsafe_recall']:5.1f} | {a['over_block']:5.1f} | {a['refused_pct']:4.1f}% | "
           f"{dtxt} | {a['usd_per_1m_msgs']:,.0f} | {a['p50_ms'] or 0:,.0f}")
-print("– disguised F1: House Rules / Nano / Ultra disguised receipts are from an")
-print("  earlier run of the same adapter (deployment ier7tjje) and ARE shipped;")
-print("  the frontier scores from that run are not published — not recomputable")
+print("– disguised F1: NVIDIA-arm receipts ARE shipped (House Rules ier7tjje,")
+print("  Nano o4ubjdmu, Ultra serverless); frontier disguised scores from that")
+print("  earlier run are not published — not recomputable")
 
 W, H, x0, bw = 1100, 600, 330, 480
 s = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" font-family="Arial, sans-serif">',
@@ -132,7 +134,7 @@ for title, ds, top in ((f"Held-out NVIDIA policy test ({n_of('nvidia_test')} row
         s.append(f'<text x="{x0 + w + 8:.1f}" y="{y + 21}" font-size="14" fill="{"#c62828" if m["refused_pct"] >= 5 else "#222"}">{note}</text>')
 s.append(f'<text x="{x0}" y="{H - 42}" font-size="12" fill="#555">Bars start at 50. Refusals scored as wrong. Green = NVIDIA on Fireworks, grey = closed frontier.</text>')
 s.append(f'<text x="{x0}" y="{H - 26}" font-size="12" fill="#555">NVIDIA baselines are zero-shot with no policy text (policy-blind); frontier arms got the full policy prompt.</text>')
-s.append(f'<text x="{x0}" y="{H - 10}" font-size="12" fill="#555">Disguised panel: House Rules / Nano / Ultra receipts are from an earlier run (deployment ier7tjje); frontier receipts not published.</text>')
+s.append(f'<text x="{x0}" y="{H - 10}" font-size="12" fill="#555">Disguised panel: House Rules ier7tjje · Nano o4ubjdmu · Ultra serverless; frontier disguised receipts not published.</text>')
 s.append('</svg>')
 svg = Path("docs/img/final-headline.svg"); svg.write_text("\n".join(s), encoding="utf-8")
 from make_report import svg_to_png

@@ -8,7 +8,7 @@ Reads receipts — no model calls, $0:
     results/nvidia-v1-frontier/frontier-router-b.jsonl     Claude Opus 5.5
 
 Writes ``results/stats/vs_frontier.json`` + ``vs_frontier.md``. One command,
-idempotent — re-run after frontier-router-b finishes to refresh:
+idempotent — re-run to refresh:
 
     .venv/bin/python scripts/stats_vs_frontier.py
 

@@ -126,9 +126,8 @@ def rule_hits(rule_result: Any) -> list[str]:
 
 
 def rule_verdict(rule_result: Any) -> Verdict | dict | None:
-    """Decisive verdict from the rule gate, if any (PLAN: 'may return a
-    verdict immediately'). Accepts a Verdict, dict with verdict/label, object
-    with .verdict, or dict with decisive=True."""
+    """Decisive verdict from the rule gate, if any. Accepts a Verdict, dict
+    with verdict/label, object with .verdict, or dict with decisive=True."""
     if rule_result is None or isinstance(rule_result, (list, tuple, set, str)):
         return None
     if isinstance(rule_result, Verdict):

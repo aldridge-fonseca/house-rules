@@ -5,7 +5,7 @@ Downloads the three parquet splits (~67 MB total) into data/nvidia/raw/ (gitigno
 and emits, into data/nvidia/:
 
   train_sft.jsonl    Fireworks chat-SFT rows; assistant = strict JSON label
-  train_kway.jsonl   decision_loop rows (format validated by the r2 converter)
+  train_kway.jsonl   decision_loop rows
   dev_calib.jsonl    held-out-from-train calibration rows (eval schema)
   validation.jsonl   NVIDIA validation split, text rows (eval schema, extra holdout)
   test.jsonl         NVIDIA test split, text rows (eval schema)

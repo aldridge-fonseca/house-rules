@@ -3,7 +3,7 @@
 # (the image route) with a 30-minute auto-stop teardown.
 #
 # DRY RUN BY DEFAULT: prints the firectl commands and exits. Pass --execute
-# to actually create the deployment (coordinator only — billed GPU time).
+# to actually create the deployment (billed GPU time).
 #
 # Cost facts (verified 2026-11-02 via `firectl deployment-shape-version match`
 # and https://fireworks.ai/pricing):
@@ -46,7 +46,7 @@ done
 if [ -z "$DEPLOYMENT_ID" ]; then
   DEPLOYMENT_ID="safety-one-vl-$(date -u +%m%d%H%M)"
 fi
-WORKDIR=/tmp/so-vision-deploy
+WORKDIR="${SO_VISION_WORKDIR:-${TMPDIR:-/tmp}/so-vision-deploy}"
 COST_NOTE="${GPUS}x B200 x \$13/GPU-h = \$${RATE_H}/h (~\$0.87/min; ${MINUTES} min cap ~= \$$(( RATE_H * MINUTES / 60 )))"
 
 echo "== Super VL deployment plan (model: $MODEL) =="

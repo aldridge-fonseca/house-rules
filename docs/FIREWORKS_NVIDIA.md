@@ -2,7 +2,7 @@
 
 Sponsor-tech page for prize eligibility (Fireworks stack + NVIDIA Best-Use). Every claim cites a path in this repo; nothing here is implied endorsement. Unknowns are marked **not recorded**.
 
-House Rules runs **every model call on Fireworks AI**: the tuned specialist and baselines on **dedicated on-demand deployments**, gray-zone escalation and the large zero-shot baseline on **serverless** inference, and the specialist LoRA produced by the **Fireworks Training API**. All models are open **NVIDIA Nemotron** checkpoints, trained on NVIDIA's own content-safety dataset.
+House Rules runs **every House Rules model call on Fireworks AI**: the tuned specialist and baselines on **dedicated on-demand deployments**, gray-zone escalation and the large zero-shot baseline on **serverless** inference, and the specialist LoRA produced by the **Fireworks Training API**. Frontier GPT/Opus baselines use a third-party token router (not Fireworks) — see [Frontier baselines](#frontier-baselines--access-path-and-pricing-not-fireworks). All NVIDIA models are open **NVIDIA Nemotron** checkpoints, trained on NVIDIA's own content-safety dataset.
 
 Account id in live model paths: `kldjalkdjwwpadjapdj`.
 
@@ -90,16 +90,44 @@ How: text-only JSON-label SFT (`{"label","categories"}`) under the project taxon
 
 Env: `FIREWORKS_API_KEY`, `FIREWORKS_ACCOUNT_ID` (see `.env.example`). Never commit secrets.
 
-### 1) Data (offline, $0)
+### 1) Data (no paid API; requires network)
+
+`scripts/prep_nvidia.py` downloads the public Hugging Face dataset — **no paid
+model/API spend**, but it is **not offline** (needs network). Leakage filtering
+is local afterward.
 
 ```bash
 python3 scripts/prep_nvidia.py
 python3 scripts/check_leakage.py   # writes filtered/ + leakage report
 ```
 
-### 2) Training config (Training API path that matches the promoted adapter)
+### 2) Optional training dependency (reproduce Training API launcher)
 
-Defaults from `scripts/train_api_sft.py` (overrides `config/train.yaml` alpha-16 draft for managed SFT):
+`scripts/train_api_sft.py` imports the Fireworks cookbook `training` package.
+That package is **absent by design** from this repo's default `requirements.txt`
+(headline eval/demo need no training install). Without it, the script still
+exposes `--help`; launching a job needs the optional install below.
+
+Public source (verified HEAD on 2026-11-02):
+[`fw-ai/cookbook`](https://github.com/fw-ai/cookbook) @
+`57968a2237b663be33078d2747a28463983ae134`.
+
+**This pin is today's verified public HEAD for optional reproduction; package
+installation has not been tested here. It is not the provenance of the
+shipped adapter.** The exact cookbook / trainer revision used
+when the promoted LoRA was trained is **not recorded**.
+
+```bash
+# project-local; separate from requirements.txt
+git clone https://github.com/fw-ai/cookbook.git cookbook
+git -C cookbook checkout 57968a2237b663be33078d2747a28463983ae134
+pip install -e cookbook/training
+# then: python3 scripts/train_api_sft.py --help
+```
+
+### 3) Training config (Training API path that matches the promoted adapter)
+
+Defaults from `scripts/train_api_sft.py` (overrides `config/train.yaml` alpha-16 draft for managed SFT). **Paid** once launched:
 
 ```bash
 # Dedicated Nano LoRA → accounts/$FIREWORKS_ACCOUNT_ID/models/safety-one-nano-safety
@@ -125,7 +153,7 @@ python3 scripts/train_sft.py \
 python3 scripts/train_poll.py --job-id <JOB_ID> --execute --watch
 ```
 
-### 3) Deploy specialist (bills GPU-time while hot) + teardown
+### 4) Deploy specialist (bills GPU-time while hot) + teardown
 
 ```bash
 firectl deployment-shape-version match \
@@ -145,7 +173,7 @@ firectl deployment delete <ID> --ignore-checks
 Untuned Nano ablation: same deploy flow with base
 `accounts/fireworks/models/nemotron-nano-3-30b-a3b` (receipt deployment `o4ubjdmu`).
 
-### 4) Super VL deploy (optional; not required for shipped text results)
+### 5) Super VL deploy (optional; not required for shipped text results)
 
 ```bash
 bash scripts/vision_deploy.sh                 # dry-run
@@ -154,7 +182,7 @@ export FIREWORKS_VISION_MODEL=accounts/$FIREWORKS_ACCOUNT_ID/deployments/<ID>
 firectl deployment delete <ID> --ignore-checks
 ```
 
-### 5) Eval systems used in `results/nvidia-v1/`
+### 6) Eval systems used in `results/nvidia-v1/`
 
 ```bash
 # full pipeline = final (tuned deploy + Ultra escalation)
@@ -205,7 +233,7 @@ Frontier router spend in `results/spend.json` is **not** Fireworks and is omitte
 - `frontier-router-a` = `openai/gpt-6.1-sol`, `frontier-router-b` = `anthropic/claude-opus-5.5`, reached through a third-party **OpenAI-compatible token router** (`baselines/run_frontier_router.py`; provider `RouterFrontierProvider` in `safety_one/providers/frontier.py`).
 - Billed at the router's published ratio prices from `baselines/prices.yaml` — GPT-6.1 Sol **$2 / $10**, Opus 5.5 **$4 / $20** per 1M tokens in/out — not first-party list prices.
 - Frontier latency includes the gateway hop and is reported over answered rows only; refused rows carry no latency (62 GPT, 434 Opus refusals on `nvidia_test`).
-- Run concurrency for the shipped frontier receipts is **not recorded** (`run_frontier_router.py` default is 4; House Rules ran at 48).
+- Run concurrency for the shipped frontier receipts is **not recorded** (runner default `--concurrency 4`; the actual flag used for those receipts was **not retained**). House Rules NVIDIA arms ran at concurrency 48.
 
 ---
 

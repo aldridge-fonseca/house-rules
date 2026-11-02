@@ -32,6 +32,15 @@ promoted to accounts/<acct>/models/<output_model_id>, which is what
 
 Env: FIREWORKS_API_KEY must be set (load ``.env`` from the repo root). Never log it.
 
+Optional dependency: the ``training`` package from the public Fireworks AI
+cookbook is required only to actually launch a job (``--help`` works without
+it). It is intentionally not in requirements.txt because it pulls heavyweight
+training dependencies. Install once, pinned for reproducibility:
+
+  git clone https://github.com/fw-ai/cookbook.git cookbook
+  git -C cookbook checkout 57968a2237b663be33078d2747a28463983ae134
+  pip install -e cookbook/training
+
 Run (from repo root):
   python scripts/train_api_sft.py --job nano
 """
@@ -43,8 +52,8 @@ import logging
 import os
 import sys
 
-import training.recipes.sft_loop as sft_loop
-from training.utils import RunnerConfig, TrainerConfig, WandBConfig
+COOKBOOK_REPO = "https://github.com/fw-ai/cookbook"
+COOKBOOK_COMMIT = "57968a2237b663be33078d2747a28463983ae134"
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 TRAIN_JSONL = os.path.join(REPO, "data/nvidia/filtered/train_sft.jsonl")
@@ -63,7 +72,7 @@ PRESETS = {
         renderer_name="nemotron3_disable_thinking",
         output_model_id="safety-one-nano-safety",
         log_path="/tmp/so-train-logs/nano-run",
-        trainer=TrainerConfig(training_shape_id=NANO_TRAINING_SHAPE),
+        training_shape_id=NANO_TRAINING_SHAPE,
     ),
     # Job B — hedge. Free serverless LoRA SFT promo (until 11/30).
     "glimmer": dict(
@@ -95,7 +104,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--dcp-save-interval", type=int, default=150,
                    help="Periodic resumable checkpoint every N steps (0=off).")
     p.add_argument("--render-workers", type=int, default=2,
-                   help="Local render workers; keep low on this 4-core/4GB box.")
+                   help="Local render workers; keep low on small hosts.")
     p.add_argument("--log-path", default=None, help="Override preset log dir.")
     return p.parse_args()
 
@@ -116,6 +125,19 @@ def main() -> int:
         if not os.path.exists(path):
             log.error("missing dataset: %s", path)
             return 2
+
+    try:
+        import training.recipes.sft_loop as sft_loop
+        from training.utils import RunnerConfig, TrainerConfig, WandBConfig
+    except ImportError:
+        log.error(
+            "optional dependency `training` (Fireworks AI cookbook) is not "
+            "installed; it is needed only to launch a training job. Install:\n"
+            "  git clone %s cookbook\n"
+            "  git -C cookbook checkout %s\n"
+            "  %s -m pip install -e cookbook/training",
+            COOKBOOK_REPO, COOKBOOK_COMMIT, sys.executable)
+        return 2
 
     preset = PRESETS[args.job]
     log_path = args.log_path or preset["log_path"]
@@ -141,7 +163,8 @@ def main() -> int:
         dcp_save_interval=args.dcp_save_interval,
         render_workers=args.render_workers,
         output_model_id=output_model_id,
-        trainer=preset.get("trainer", TrainerConfig()),
+        trainer=(TrainerConfig(training_shape_id=preset["training_shape_id"])
+                 if preset.get("training_shape_id") else TrainerConfig()),
         wandb=WandBConfig(project="safety-one-sft"),
         runner=RunnerConfig(
             status_file=os.path.join(log_path, "status.json"),

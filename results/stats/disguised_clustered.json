@@ -2,8 +2,9 @@
  "generated_by": "scripts/stats_disguised_clustered.py",
  "seed": 0,
  "n_boot": 2000,
+ "n_perm": 10000,
  "cluster_by": "meta.source_row_id",
- "scoring": "evaluate()-compatible labels; empty/unparseable preds match neither class. Bootstrap resamples base-message clusters with replacement.",
+ "scoring": "evaluate()-compatible labels; empty/unparseable preds match neither class. Bootstrap resamples base-message clusters with replacement. rand_p is a seeded two-sided paired cluster randomization test: each replicate independently swaps the ours/baseline prediction vectors within a base-message cluster (seed+1 stream); row-level McNemar is retained only as a labeled diagnostic.",
  "inputs": {
   "disguised": "data/frozen/disguised_v1.jsonl",
   "ours": "results/nvidia-v1/final.jsonl",
@@ -28,24 +29,33 @@
      "ci95": [
       -0.028971241840608543,
       0.027924071398392685
-     ]
+     ],
+     "rand_p": 0.9912008799120088
     },
     "unsafe_recall": {
      "diff": 0.05540661304736372,
      "ci95": [
       0.018181818181818188,
       0.09432321263380467
-     ]
+     ],
+     "rand_p": 0.005699430056994301
     },
     "over_block_rate": {
      "diff": 0.05439709882139618,
      "ci95": [
       0.015147727272727287,
       0.0948658987263067
-     ]
+     ],
+     "rand_p": 0.0091990800919908
     }
    },
    "mcnemar_p": 0.9557072695793823,
+   "rand_p": {
+    "macro_f1": 0.9912008799120088,
+    "unsafe_recall": 0.005699430056994301,
+    "over_block_rate": 0.0091990800919908
+   },
+   "rand_p_min": 9.999000099990002e-05,
    "discordant_system_wins_losses": [
     163,
     161
@@ -70,24 +80,33 @@
      "ci95": [
       0.14088013814534897,
       0.2338315959106621
-     ]
+     ],
+     "rand_p": 9.999000099990002e-05
     },
     "unsafe_recall": {
      "diff": -0.04647006255585351,
      "ci95": [
       -0.08707715918374312,
       -0.007718036680300911
-     ]
+     ],
+     "rand_p": 0.026497350264973504
     },
     "over_block_rate": {
      "diff": -0.36899365367180414,
      "ci95": [
       -0.439321932637513,
       -0.3014386864255235
-     ]
+     ],
+     "rand_p": 9.999000099990002e-05
     }
    },
    "mcnemar_p": 7.836277878032334e-55,
+   "rand_p": {
+    "macro_f1": 9.999000099990002e-05,
+    "unsafe_recall": 0.026497350264973504,
+    "over_block_rate": 9.999000099990002e-05
+   },
+   "rand_p_min": 9.999000099990002e-05,
    "discordant_system_wins_losses": [
     456,
     101
@@ -112,24 +131,33 @@
      "ci95": [
       0.05873038005049179,
       0.1013689285163931
-     ]
+     ],
+     "rand_p": 9.999000099990002e-05
     },
     "unsafe_recall": {
      "diff": 0.1277926720285969,
      "ci95": [
       0.100752448888347,
       0.1532580678770747
-     ]
+     ],
+     "rand_p": 9.999000099990002e-05
     },
     "over_block_rate": {
      "diff": -0.03263825929283776,
      "ci95": [
       -0.06296434494195687,
       -0.005086434385195884
-     ]
+     ],
+     "rand_p": 0.0418958104189581
     }
    },
    "mcnemar_p": 8.679687038787392e-21,
+   "rand_p": {
+    "macro_f1": 9.999000099990002e-05,
+    "unsafe_recall": 9.999000099990002e-05,
+    "over_block_rate": 0.0418958104189581
+   },
+   "rand_p_min": 9.999000099990002e-05,
    "discordant_system_wins_losses": [
     278,
     99

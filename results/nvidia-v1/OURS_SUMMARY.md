@@ -85,15 +85,23 @@ Reading:
   deployment `ier7tjje`; `final-rawtext` ran later on `qd2gx85j` with the current code (only
   `provider_text` differs). The $69/1M for `final` on that set uses the earlier run's GPU
   allocation ($60/1M calls); that run's timing wall-clock is not shipped.
-- Gray-zone escalation adds little on NVIDIA-policy data (+0.2, n.s.; escalates 3.2 % of rows, cuts
-  over-block 7.3 → 5.5); it mattered more on the mixed-policy frozen set (earlier `frozen-v1` run;
-  receipts not published).
+- **Gray-zone escalation (headline `final` = `scripts.nano_ladder:full`):** retains the model's
+  generated label (`calibration.unsafe_threshold: null`) and the default gray zone
+  (`config/router.yaml` `[0.35, 0.65]`; bands are labeled placeholders). On `nvidia_test`,
+  escalation vs `specialist-only` is **+0.2 macro-F1 [−0.4, +0.7], p=.73** (n.s.), escalating
+  3.2 % of rows. The evidenced tradeoff vs specialist-only is over-block **7.3 → 5.5 %**, with
+  lower unsafe recall (**98.0 → 97.6**), higher p95 latency (**944 → 1,193 ms**), and higher
+  $/1M (**$52.2 → $56.2**). No disguised `specialist-only` receipts are shipped, so any claim
+  that escalation "earned its keep" on adversarial/mixed-policy inputs is **not evidenced**
+  here. Dev calibration optimizes macro-F1 (`scripts/calibrate_gate.py`); calibrated
+  variants exist in config but are **not** the headline receipts.
 
 Frontier disguised_v1 scores (GPT-6.1 Sol / Claude Opus 5.5) come from an earlier run whose
 per-case receipts are **not published** — earlier run, receipts not published; not verifiable from
-this repo and excluded from all asserted numbers here. House Rules and Ultra disguised_v1 rows
-from that same earlier run **are** shipped (with `reused_from`); the frontier receipts from it
-were not retained.
+this repo and excluded from all asserted numbers here. NVIDIA-arm disguised_v1 receipts **are**
+shipped (with `reused_from` where applicable): House Rules on deployment `ier7tjje`, Nano
+untuned on `o4ubjdmu`, Ultra serverless `nemotron-3-ultra-nvfp4`. Frontier receipts from that
+earlier run were not retained.
 
 ## Clean-up ablation and per-perturbation (disguised_v1, LIVE)
 

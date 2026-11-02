@@ -2,7 +2,7 @@
   "_notes": {
     "prompts": "Prompts differ by arm: 'final' and 'nano-untuned' use the one-line training prompt (scripts/nano_ladder.py TRAIN_SYSTEM_PROMPT); 'ultra-untuned' zero-shot and the Ultra escalation use a minimal label-only prompt (safety_one/providers/fireworks.py) with NO policy text \u2014 the NVIDIA zero-shot baselines are policy-blind; the frontier arms received the full shared policy + 26-category taxonomy prompt (safety_one/providers/frontier.py moderation_prompt()).",
     "frontier_access": "GPT-6.1 Sol and Claude Opus 5.5 were called through a third-party OpenAI-compatible token router at the router's published rates (baselines/prices.yaml: $2/$10 and $4/$20 per 1M tokens); latency includes the gateway hop and is over answered rows only.",
-    "disguised_v1": "House Rules (deployment ier7tjje) and Ultra disguised_v1 receipts are from an earlier run of the same adapter and ARE shipped; the frontier scores from that run are not published (null below) \u2014 not recomputable."
+    "disguised_v1": "Disguised NVIDIA-arm receipts ARE shipped, with per-arm provenance: House Rules (final) on deployment ier7tjje; Nano untuned on o4ubjdmu; Ultra serverless nemotron-3-ultra-nvfp4. Frontier disguised scores from that earlier run are not published (null below) \u2014 not recomputable."
   },
   "final": {
     "label": "Ours (tuned NVIDIA Nano system)",
