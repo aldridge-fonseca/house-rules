@@ -55,7 +55,7 @@ VISION = SAFETY_ONE / "data" / "vision"
 RAW = VISION / "raw"
 IMG_DIR = VISION / "images"
 
-UA = {"User-Agent": "safety-one-hackathon-prep/1.0 (eval data preparation)"}
+UA = {"User-Agent": "house-rules-data/1.0 (eval data preparation)"}
 TIMEOUT = 40
 
 SIUO_BASE = "https://huggingface.co/datasets/sinwang/SIUO/resolve/main"

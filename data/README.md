@@ -17,7 +17,7 @@ were excluded upstream; provenance + sha256 of raw inputs in `nvidia/manifest.js
 
 | file | rows | how made | used for |
 |---|---:|---|---|
-| `nvidia/filtered/train_sft.jsonl` | 19,830 | text-safety rows from the train split (88,688 → dedup + leakage filter), eval schema → chat-SFT JSON target `{"label","categories"}` | the file uploaded for the final LoRA (`--max-examples 8000` seeded cap applied by `scripts/train_sft.py` at upload) |
+| `nvidia/filtered/train_sft.jsonl` | 19,830 | text-safety rows from the train split (88,688 → dedup + leakage filter), eval schema → chat-SFT JSON target `{"label","categories"}` | Training API LoRA input (`scripts/train_api_sft.py --job nano`, `--max-examples` default None = all rows; exact trained-row count and job id **not recorded**). The managed-SFT draft (`config/train.yaml` / `scripts/train_sft.py`) optionally caps at 8,000 and was not the shipped path. |
 | `nvidia/test.jsonl` | 3,340 | full text-safety test split, untouched | held-out headline eval set (`nvidia_test`); never trained or calibrated on |
 | `nvidia/filtered/dev_calib.jsonl` | 2,479 | held-out-from-train calibration rows, leakage-filtered | threshold/escalation calibration (`scripts/calibrate_gate.py`, `systems.yaml`) |
 | `nvidia/filtered/dev_sft.jsonl` | 2,479 | `dev_calib` converted to chat-SFT format | `--eval-file` for the training API run |
@@ -56,7 +56,7 @@ not used by the runs reported in `results/`. Same for SIUO (vision eval, gated) 
 
 | file | rows | how made |
 |---|---:|---|
-| `frozen/disguised_v1.jsonl` | 2,222 | 300 base rows (150 unsafe / 150 safe, seed 20261102) sampled from the obfuscation-robustness slice across the six eval sources above, each perturbed with up to 8 deterministic disguises (`none`, `base64_wrap`, `leetspeak`, `homoglyph`, `zero_width`, `mixed_case`, `char_spacing`, `emoji_sub`). See `data/ROBUSTNESS.md` and `frozen/README.md`. |
+| `frozen/disguised_v1.jsonl` | 2,222 | 300 base messages (150 unsafe / 150 safe, seed 20261102) sampled from the obfuscation-robustness slice across the six eval sources above × **7 perturbations + the unperturbed control (`none`)** (`base64_wrap`, `leetspeak`, `homoglyph`, `zero_width`, `mixed_case`, `char_spacing`, `emoji_sub`, `none`). Gold labels **inherit each source dataset's own policy** (OpenAI Moderation, XSTest, Aegis 2.0, HatemojiCheck, WildGuardTest, NVIDIA) — not NVIDIA's policy alone. See `data/ROBUSTNESS.md` and `frozen/README.md`. |
 
 **Redaction:** the 320 rows in `disguised_v1.jsonl` derived from WildGuardTest
 (`source == "wildguard_test"`) have `text` and `meta.orig_text` replaced by

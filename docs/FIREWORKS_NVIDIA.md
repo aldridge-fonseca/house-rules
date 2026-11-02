@@ -1,23 +1,42 @@
-# Fireworks × NVIDIA — evidence
+# Built on Fireworks AI · NVIDIA Nemotron — receipt evidence
 
-Receipt-only page for prize eligibility (Fireworks stack + NVIDIA Best-Use). Every claim cites a path in this repo. Unknowns are marked **not recorded**.
+Sponsor-tech page for prize eligibility (Fireworks stack + NVIDIA Best-Use). Every claim cites a path in this repo; nothing here is implied endorsement. Unknowns are marked **not recorded**.
+
+House Rules runs **every model call on Fireworks AI**: the tuned specialist and baselines on **dedicated on-demand deployments**, gray-zone escalation and the large zero-shot baseline on **serverless** inference, and the specialist LoRA produced by the **Fireworks Training API**. All models are open **NVIDIA Nemotron** checkpoints, trained on NVIDIA's own content-safety dataset.
 
 Account id in live model paths: `kldjalkdjwwpadjapdj`.
 
 ---
 
-## NVIDIA models (exact Fireworks model ids)
+## Which calls ran where (from shipped receipts)
 
-| Role | Fireworks model id | How used | Receipt |
-|---|---|---|---|
-| Specialist base + untuned ablation | `accounts/fireworks/models/nemotron-nano-3-30b-a3b` | LoRA base; also served untuned on on-demand deployment `o4ubjdmu` | `config/train.yaml` (`model.base_model`); `results/nvidia-v1/OURS_SUMMARY.md`; `results/nvidia-v1/nano-untuned.jsonl` (`prediction.model`) |
-| Tuned specialist (LoRA artifact) | `accounts/kldjalkdjwwpadjapdj/models/safety-one-nano-safety` | Live-merge on-demand; eval via deployments `qd2gx85j` (nvidia_test / specialist-only / final-rawtext) and `ier7tjje` (disguised_v1 rows in `final.jsonl`) | `results/nvidia-v1/OURS_SUMMARY.md`; `results/nvidia-v1/final.jsonl`, `specialist-only.jsonl`, `ours_timing.json` |
-| Gray-zone escalation + large zero-shot baseline | `accounts/fireworks/models/nemotron-3-ultra-nvfp4` | Fireworks **serverless** chat; `nvidia-ultra-zeroshot` baseline; escalation target in `full` / `final` | `config/systems.yaml` (`nvidia-ultra-zeroshot`); `config/router.yaml` (`providers.escalation`); `results/nvidia-v1/ultra-untuned.jsonl`; escalated rows in `final.jsonl` (`…>accounts/fireworks/models/nemotron-3-ultra-nvfp4`) |
-| Vision catalog id (on-demand only) | `accounts/fireworks/models/nvidia-nemotron-3p5-super-vl-120b-a12b-nvfp4` | Wired for image route; deploy recipe in `scripts/vision_deploy.sh` | `config/router.yaml` (`providers.vision`); `config/systems.yaml` (`vision-routed`); `scripts/vision_deploy.sh` |
-| Cheap text baseline (catalog) | `accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b` | Configured as `nvidia-lightning-zeroshot` / `vision-text-only` | `config/systems.yaml` only |
-| Hedge base (not in final runs) | `accounts/fireworks/models/muse-glimmer-30b` | Fallback / free-SFT recipe in train scripts | `config/train.yaml` (`fallback` / `fast_fallback`); `scripts/train_api_sft.py` (`--job glimmer`); `scripts/train_launch.sh` |
+| Fireworks surface | What ran there | Count | Receipt |
+|---|---|---:|---|
+| On-demand deployment `qd2gx85j` — tuned Nano (live-merge LoRA, 1× B200 @ $13/h) | `final` and `specialist-only` arms on `nvidia_test`; `final-rawtext` arm on `disguised_v1` | 3,340 + 3,340 + 2,216 calls | `results/nvidia-v1/final.jsonl`, `specialist-only.jsonl`, `final-rawtext.jsonl`, `ours_timing.json` |
+| On-demand deployment `ier7tjje` — tuned Nano | `final` arm on `disguised_v1` | 2,216 calls (1,998 direct + 218 escalated) | `results/nvidia-v1/final.jsonl` (`prediction.model` chain) |
+| On-demand deployment `o4ubjdmu` — **untuned** Nano | `nano-untuned` ablation on both splits | 3,339 + 2,205 calls | `results/nvidia-v1/nano-untuned.jsonl`, `ours_timing.json` |
+| On-demand deployment `we32k66w` — tuned Nano | Live 100-message demo | 100 messages; **7 escalated** to Ultra (11.3–35.2 s), all others ≤ 425 ms | `demo/cached/results.jsonl`, `demo/cached/record_summary.json` |
+| Serverless `accounts/fireworks/models/nemotron-3-ultra-nvfp4` — Ultra 550B, per-token | `ultra-untuned` zero-shot baseline on both splits + gray-zone escalation inside `final`/`final-rawtext` | 5,562 baseline calls; 107 + 218 + 250 + 7 (demo) escalations | `results/nvidia-v1/ultra-untuned.jsonl`; `…>nemotron-3-ultra-nvfp4` chains in `final.jsonl`, `final-rawtext.jsonl`, `demo/cached/results.jsonl` |
+| **Training API** (dedicated trainer, shape `nemotron-nano-3-30b-a3b-262k-b200-lora`) | LoRA SFT of the specialist → `accounts/kldjalkdjwwpadjapdj/models/safety-one-nano-safety` | 1 run; job id **not recorded** | `scripts/train_api_sft.py --job nano`; model id in `results/nvidia-v1/OURS_SUMMARY.md` |
 
-**Published LIVE text runs did not use Lightning or Glimmer** — no `nemotron-lightning-*` or `safety-one-glimmer-*` model strings appear in `results/nvidia-v1/*.jsonl`. Vision Super VL: deploy/eval scripts exist; **no** `results/` JSONL for a Super VL run is shipped here → deployment id / LIVE vision $ / wall time for Super VL: **not recorded** in published results.
+Deployment create/delete timestamps and idle time are **not recorded**; eval wall-clock per run is in `ours_timing.json`.
+
+---
+
+## NVIDIA models (exact Fireworks model ids) — and why each
+
+| Model | Fireworks model id | Why it is in the submission | How used | Receipt |
+|---|---|---|---|---|
+| **Nemotron Nano 3 30B-A3B** | `accounts/fireworks/models/nemotron-nano-3-30b-a3b` | Small open MoE: cheap to serve on-demand, LoRA-tunable through the Fireworks Training API. Specialist role. | LoRA base; also served untuned on `o4ubjdmu` as an ablation | `config/train.yaml` (`model.base_model`); `results/nvidia-v1/nano-untuned.jsonl` (`prediction.model`) |
+| **Tuned specialist** (LoRA artifact on Nano) | `accounts/kldjalkdjwwpadjapdj/models/safety-one-nano-safety` | Tuned on NVIDIA's own safety data; beats the ~18× larger Ultra zero-shot by **+10.8 macro-F1 [+9.4, +12.4]** at ~half the $/msg | Default + multilingual lanes; deployments `qd2gx85j`, `ier7tjje`, `we32k66w` | `results/nvidia-v1/OURS_SUMMARY.md` (paired test vs `ultra-untuned`); `final.jsonl`, `specialist-only.jsonl`, `demo/cached/results.jsonl` |
+| **Nemotron 3 Ultra NVFP4 550B** | `accounts/fireworks/models/nemotron-3-ultra-nvfp4` | Largest open Nemotron: the zero-shot ceiling baseline and the escalation target for gray-zone rows only — Ultra capacity is paid for only when the specialist is unsure (3.2 % of `nvidia_test`) | Fireworks **serverless** chat; `nvidia-ultra-zeroshot` baseline; escalation target in `full`/`final` | `config/systems.yaml` (`nvidia-ultra-zeroshot`); `config/router.yaml` (`providers.escalation`); `results/nvidia-v1/ultra-untuned.jsonl`; escalated chains in `final.jsonl` |
+| **Nemotron 3.5 Super VL 120B** (vision) | `accounts/fireworks/models/nvidia-nemotron-3p5-super-vl-120b-a12b-nvfp4` | Multimodal Nemotron for the image lane | Wired for the image route; deploy recipe in `scripts/vision_deploy.sh`. **No evaluated vision run is shipped** — the only demo image case (`c11`) routed to the text specialist (`route: specialist`, `has_image: false`) | `config/router.yaml` (`providers.vision`); `config/systems.yaml` (`vision-routed`); `demo/cached/results.jsonl` |
+| Nemotron Lightning 3.5 30B (catalog) | `accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b` | Cheap text baseline candidate | Configured as `nvidia-lightning-zeroshot` / `vision-text-only`; not in shipped runs | `config/systems.yaml` only |
+| Muse Glimmer 30B (non-NVIDIA hedge) | `accounts/fireworks/models/muse-glimmer-30b` | Fallback if Nemotron SFT had failed | Fallback / free-SFT recipe only; not in shipped runs | `config/train.yaml` (`fallback`/`fast_fallback`); `scripts/train_api_sft.py --job glimmer` |
+
+**Published LIVE text runs did not use Lightning or Glimmer** — no `nemotron-lightning-*` or `safety-one-glimmer-*` model strings appear in `results/nvidia-v1/*.jsonl`. Super VL: deploy/eval scripts exist but no `results/` JSONL for a Super VL run is shipped → deployment id, LIVE vision $, and wall time for Super VL: **not recorded**.
+
+**NVIDIA hardware note:** all GPU compute was Fireworks-managed B200 (on-demand deployments + Training API). No DGX Spark or other local NVIDIA hardware was used or measured — nothing in `results/` evidences it.
 
 ---
 
@@ -39,12 +58,12 @@ How: text-only JSON-label SFT (`{"label","categories"}`) under the project taxon
 
 | Feature | Status | Evidence |
 |---|---|---|
-| **Training API LoRA SFT** (streamed local JSONL → dedicated trainer → promote account model) | **Used** for the specialist | Recipe: `scripts/train_api_sft.py --job nano` (base Nano, shape `accounts/fireworks/trainingShapes/nemotron-nano-3-30b-a3b-262k-b200-lora`, LoRA rank **8** / alpha **32**, 1 epoch, batch 32, lr `1e-4`, `output_model_id=safety-one-nano-safety`). Data path named in `data/README.md` (“training API run”). Promoted model id in `results/nvidia-v1/OURS_SUMMARY.md`. Fireworks trainer/session id: **not recorded** in this repo. Train wall-clock and billed training GPU-$: **not recorded** here (script notes ~2× B200; rate “not separately published”). |
-| **Managed LoRA SFT** (`firectl dataset create` + `firectl sftj create`) | **Prepared; not evidenced as completed** | Scripts: `scripts/train_sft.py`, `scripts/train_upload.py`, `scripts/train_launch.sh`, `scripts/train_poll.py`. `train_launch.sh` documents upload endpoint `FailedPrecondition` / “dataset uploads are temporarily disabled”. **No** managed `sftj` job id appears under `results/`. |
-| **Dataset upload** (`firectl dataset create <id> <file>`) | **Not evidenced as completed** for the winning run | Same scripts; Training API path streams local files and “never calls the disabled dataset-upload endpoint” (`train_api_sft.py` docstring). Optional `--external-url` register path is documented only. |
-| **On-demand deployment** (live-merge LoRA / base Nano) | **Used** | Create: `scripts/deploy_create.py` → `firectl deployment create … --deployment-shape default`. Teardown: `scripts/deploy_teardown.py` → `firectl deployment delete <ID> --ignore-checks`. Live ids in receipts: `qd2gx85j`, `o4ubjdmu`, `ier7tjje` (`OURS_SUMMARY.md`, `ours_timing.json`, JSONLs). Create/delete timestamps for those deployments: **not recorded** in shipped files (only eval wall-seconds in `ours_timing.json`). |
-| **On-demand Super VL** (4× B200) | **Scripted; LIVE receipts not shipped** | `scripts/vision_deploy.sh` (shape `accounts/fireworks/deploymentShapes/f3m8sxu2`, $52/h catalog note). No `results/*/vision-*.jsonl` in this tree. |
-| **Serverless inference** | **Used** | Ultra baseline + escalation: `config/systems.yaml` prices $0.60 / $2.40 per 1M tokens; measured `cost_usd` on `ultra-untuned.jsonl` / escalated `final.jsonl` rows. |
+| **Training API LoRA SFT** (streamed local JSONL → dedicated trainer → promote account model) | **Used** for the specialist | Recipe: `scripts/train_api_sft.py --job nano` (base Nano, shape `accounts/fireworks/trainingShapes/nemotron-nano-3-30b-a3b-262k-b200-lora`, LoRA rank **8** / alpha **32**, 1 epoch, batch 32, lr `1e-4`, `output_model_id=safety-one-nano-safety`). Data path named in `data/README.md` ("training API run"). Promoted model id in `results/nvidia-v1/OURS_SUMMARY.md`. Fireworks trainer/session id: **not recorded** in this repo. Train wall-clock and billed training GPU-$: **not recorded** here (script notes ~2× B200; rate "not separately published"). |
+| **Managed LoRA SFT** (`firectl dataset create` + `firectl sftj create`) | **Prepared; not evidenced as completed** | Scripts: `scripts/train_sft.py`, `scripts/train_upload.py`, `scripts/train_launch.sh`, `scripts/train_poll.py`. `train_launch.sh` documents upload endpoint `FailedPrecondition` / "dataset uploads are temporarily disabled". **No** managed `sftj` job id appears under `results/`. `config/train.yaml` is the draft for this unused path (alpha 16, `max_train_rows: 8000`). |
+| **Dataset upload** (`firectl dataset create <id> <file>`) | **Not evidenced as completed** for the winning run | Same scripts; the Training API path streams local files and "never calls the disabled dataset-upload endpoint" (`train_api_sft.py` docstring). Optional `--external-url` register path is documented only. |
+| **On-demand deployment** (live-merge LoRA / base Nano) | **Used** | Create: `scripts/deploy_create.py` → `firectl deployment create … --deployment-shape default`. Teardown: `scripts/deploy_teardown.py` → `firectl deployment delete <ID> --ignore-checks`. Live ids in receipts: `qd2gx85j`, `o4ubjdmu`, `ier7tjje`, `we32k66w` (`OURS_SUMMARY.md`, `ours_timing.json`, `demo/cached/results.jsonl`). Create/delete timestamps for those deployments: **not recorded** in shipped files (only eval wall-seconds in `ours_timing.json`). |
+| **On-demand Super VL** (4× B200) | **Scripted; LIVE receipts not shipped** | `scripts/vision_deploy.sh` (shape `accounts/fireworks/deploymentShapes/f3m8sxu2`, $52/h catalog note). No `results/*/vision-*.jsonl` in this tree; the demo's single image case never reached this lane. |
+| **Serverless inference** | **Used** | Ultra baseline + escalation: `config/systems.yaml` prices $0.60 / $2.40 per 1M tokens; measured `cost_usd` on `ultra-untuned.jsonl` / escalated `final.jsonl` / `demo/cached/results.jsonl` rows. |
 | **firectl / CLI** | **Used in recipes** | Shape match: `firectl deployment-shape-version match` (`train_launch.sh`, `vision_deploy.sh`). Deploy/delete as above. Dataset/SFT CLI prepared in `train_*.py` / `train_launch.sh`. |
 | **Decision API / System One** (`POST /systemone`) | **Not used in published runs** | Client exists (`safety_one/providers/fireworks.py` `SystemOneProvider`; registry key `fireworks_systemone`). No published system in `config/systems.yaml` selects it; no `/systemone` model id in `results/nvidia-v1/*.jsonl`. `train_kway.jsonl` (decision_loop rows) is explicitly unused by the final model (`data/README.md`). |
 
@@ -145,7 +164,7 @@ GPU rate used in allocation math: **$13/h per B200** (`results/nvidia-v1/OURS_SU
 |---|---|---|
 | Training API Nano LoRA | **not recorded** | **not recorded** |
 | Managed `sftj` / dataset upload | n/a (no completed job id) | n/a |
-| Deploy `qd2gx85j` lifetime (create→delete) | **not recorded** | **not recorded** |
+| Deploy `qd2gx85j` / `ier7tjje` / `o4ubjdmu` / `we32k66w` lifetime (create→delete) | **not recorded** | **not recorded** |
 | `final` eval wall on `nvidia_test` | **49.3 s**, 3,340 calls (`ours_timing.json`) | GPU alloc **$0.1781** + Ultra tokens **$0.0096** → **~$56 / 1M msgs** (`final_headline.json`) |
 | `specialist-only` on `nvidia_test` | **48.3 s**, 3,340 calls | GPU **~$0.174** alloc at $13/h (`ours_timing.json`); tokens $0 in receipts |
 | `nano-untuned` on `nvidia_test` (`o4ubjdmu`) | **59.5 s**, 3,339 calls | GPU alloc **$0.2149** (`final_headline.json`) |
@@ -154,6 +173,7 @@ GPU rate used in allocation math: **$13/h per B200** (`results/nvidia-v1/OURS_SU
 | Ultra zero-shot `nvidia_test` | p50 **710 ms** (`OURS_SUMMARY.md`) | measured tokens **$0.3603** (`final_headline.json` / `ultra-untuned.jsonl`) |
 | Ultra zero-shot `disguised_v1` | p50 **713 ms** | measured tokens **$0.3297** |
 | `final` escalations on `nvidia_test` | 107 / 3,340 rows (**3.2%**) | included in final token **$0.0096** |
+| Demo (`we32k66w`, 100 msgs) | **79.3 s** wall (`demo/cached/record_summary.json`) | GPU alloc **$0.2809** ≈ **$2,809/1M raw** (low utilization); production-basis amortized **$56/1M** (`results/nvidia-v1/final_headline.json`) |
 | Super VL on-demand | **not recorded** (no shipped vision run) | script cites **$52/h** catalog rate only |
 | Idle / spin-up outside eval windows | **not recorded** | excluded from $/1M method in `OURS_SUMMARY.md` |
 
@@ -167,4 +187,6 @@ Frontier router spend in `results/spend.json` is **not** Fireworks (OpenAI/Anthr
 - No claim that Fireworks dataset upload succeeded for the final adapter.
 - No claim that System One / decision-loop training ran on the submission model.
 - No claim that Muse Glimmer or Nemotron Lightning appear in the shipped LIVE text results.
-- No claim of a shipped LIVE Super VL score (scripts/config only).
+- No claim of a shipped LIVE Super VL score (scripts/config only; no receipt evidences an evaluated image call).
+- No claim of NVIDIA DGX Spark or any non-Fireworks GPU use.
+- No endorsement by Fireworks AI or NVIDIA — "built on" describes infrastructure, not sponsorship.

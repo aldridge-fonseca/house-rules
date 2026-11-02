@@ -1,0 +1,73 @@
+{
+  "source": {
+    "ours_usd_per_1m": "results/nvidia-v1/final_headline.json \u2192 final.nvidia_test.usd_per_1m_msgs (also results/nvidia-v1/ours_summary.json systems.final.nvidia_test)",
+    "gpt_usd_per_1m": "results/stats/vs_frontier.json \u2192 comparisons.ours_vs_gpt.baseline.usd_per_1m_msgs",
+    "ours_prod_p95_ms": "results/nvidia-v1/final_headline.json \u2192 final.nvidia_test.p95_ms",
+    "gpt_prod_p95_ms": "results/stats/vs_frontier.json \u2192 comparisons.ours_vs_gpt.baseline.latency_p95_ms",
+    "demo_escalations": "demo/cached/results.jsonl (route contains 'escalation')",
+    "demo_spend": "demo/cached/record_summary.json"
+  },
+  "production": {
+    "label": "production basis (from results/)",
+    "note": "GPU rental amortized at full utilization over measured run wall-clock \u00f7 model calls (concurrency 48), plus Ultra escalation tokens; spin-up/idle excluded.",
+    "ours": {
+      "usd_per_1m_msgs": 56.2,
+      "p50_ms": 644,
+      "p95_ms": 1193,
+      "n": 3340,
+      "set": "nvidia_test"
+    },
+    "frontier": {
+      "label": "GPT-6.1 Sol",
+      "usd_per_1m_msgs": 1820,
+      "p50_ms": 3235,
+      "p95_ms": 6066,
+      "n": 3340,
+      "set": "nvidia_test"
+    }
+  },
+  "demo_run": {
+    "label": "this 100-message demo run (low utilization, GPU time \u00f7 100 msgs)",
+    "n": 100,
+    "wall_s": 79.26,
+    "gpu_usd_per_hour": 13.0,
+    "ours": {
+      "cost_usd": 0.2809,
+      "usd_per_1m_msgs": 2809,
+      "p50_ms": 177.7,
+      "p95_ms": 11300.2,
+      "correct": 97
+    },
+    "frontier": {
+      "cost_usd": 0.1541,
+      "usd_per_1m_msgs": 1541,
+      "p50_ms": 2498.9,
+      "p95_ms": 5659.1
+    },
+    "escalations": {
+      "n": 7,
+      "of": 100,
+      "latency_ms_min": 11293,
+      "latency_ms_max": 35209,
+      "ids": [
+        "nv-test-610094bc913a4929973dbd9c1869d58d",
+        "c20",
+        "xstest-335",
+        "nv-test-501b663d41144800ba6e644f7674698e",
+        "c12",
+        "c02",
+        "c04"
+      ],
+      "latencies_ms": [
+        35208.6,
+        32963.1,
+        26706.8,
+        15990.8,
+        12958.9,
+        11300.2,
+        11293.2
+      ],
+      "non_escalated_max_ms": 425
+    }
+  }
+}

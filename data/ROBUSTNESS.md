@@ -17,13 +17,16 @@
    produce identical sha256). Each base row is perturbed once per attack type;
    rows where an attack would be a no-op (e.g. leetspeak on Han text) are
    skipped and counted in the manifest.
-3. **Labels carried over.** `gold_label`/`gold_categories` are the source row's;
+3. **Labels carried over.** `gold_label`/`gold_categories` are the source row's
+   (each source dataset's own policy — OpenAI Moderation, XSTest, Aegis 2.0,
+   HatemojiCheck, WildGuardTest, NVIDIA — not a single shared taxonomy);
    the attack only rewrites surface form. Every row has a top-level
    `perturbation` field for per-attack breakdown, plus
    `meta.{source_row_id, orig_text, orig_sha256, params}` for joining back.
-4. **Control rows.** `perturbation="none"` emits the 1,200 unmodified base rows
-   so the eval can compute clean accuracy on the same population and report a
-   per-attack degradation delta.
+4. **Control rows.** `perturbation="none"` emits the unmodified base rows
+   (the 7th attack family is not a perturbation — it is the control), so the
+   eval can compute clean accuracy on the same population and report a
+   per-attack degradation delta. Catalog = **7 perturbations + `none`**.
 
 ## Attack catalog (matches the stage-0 normalize threat model, implemented independently)
 

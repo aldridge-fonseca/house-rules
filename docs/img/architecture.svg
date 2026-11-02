@@ -1,5 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="430" font-family="Arial, sans-serif" viewBox="0 0 960 430">
   <rect width="960" height="430" fill="white"/>
+  <text x="20" y="26" font-size="18" font-weight="bold" fill="#1A1A1A">House Rules</text>
+  <text x="128" y="26" font-size="13" fill="#666">— deterministic policy pipeline; every model call runs on Fireworks AI</text>
   <defs>
     <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L8,3 L0,6 z" fill="#555"/>
@@ -31,12 +33,12 @@
   <rect x="690" y="30" width="250" height="70" rx="8" fill="#eaf3dd" stroke="#76B900"/>
   <text x="815" y="55" font-size="13" text-anchor="middle" font-weight="bold">Vision lane</text>
   <text x="815" y="75" font-size="11" text-anchor="middle" fill="#444">Nemotron 3.5 Super VL 120B</text>
-  <text x="815" y="90" font-size="11" text-anchor="middle" fill="#444">(Fireworks on-demand deployment)</text>
+  <text x="815" y="90" font-size="11" text-anchor="middle" fill="#444">(wired on Fireworks on-demand — not evaluated)</text>
 
   <rect x="690" y="125" width="250" height="70" rx="8" fill="#d5e8b8" stroke="#76B900" stroke-width="2"/>
   <text x="815" y="150" font-size="13" text-anchor="middle" font-weight="bold">Specialist lane (default)</text>
   <text x="815" y="170" font-size="11" text-anchor="middle" fill="#444">Nemotron Nano 3 30B-A3B + LoRA</text>
-  <text x="815" y="185" font-size="11" text-anchor="middle" fill="#444">fine-tuned on Fireworks (1x B200)</text>
+  <text x="815" y="185" font-size="11" text-anchor="middle" fill="#444">Fireworks Training API · on-demand (1x B200)</text>
 
   <rect x="690" y="220" width="250" height="70" rx="8" fill="#eaf3dd" stroke="#76B900"/>
   <text x="815" y="245" font-size="13" text-anchor="middle" font-weight="bold">Multilingual lane</text>
@@ -74,5 +76,5 @@
   <path d="M760 400 Q600 425 330 402 L268 400" stroke="#e0a800" stroke-width="1.5" fill="none" stroke-dasharray="4,3" marker-end="url(#arr)"/>
 
   <!-- Footer -->
-  <text x="480" y="422" font-size="11" text-anchor="middle" fill="#888">Green = open NVIDIA models on Fireworks. Rule-gate hits and clear-confidence lanes return directly; only gray-zone rows pay for escalation.</text>
+  <text x="480" y="422" font-size="11" text-anchor="middle" fill="#888">Green = open NVIDIA models on Fireworks AI · Built on Fireworks AI + NVIDIA Nemotron. Clear-confidence lanes return directly; only gray-zone rows pay for escalation.</text>
 </svg>

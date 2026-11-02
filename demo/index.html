@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Safety One — moderation race</title>
+<title>House Rules — moderation race</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root{
@@ -17,6 +17,7 @@
   code,.mono{font-family:var(--mono)}
   header{display:flex;align-items:center;gap:14px;padding:12px 18px;
          border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+  .brand-line{font:600 11px var(--mono);color:var(--nv);letter-spacing:.3px}
   .badge{font:600 10px var(--mono);padding:3px 8px;border-radius:4px;
          letter-spacing:.8px;text-transform:uppercase}
   .b-live{background:#0d3325;color:var(--good);border:1px solid #1d5c40}
@@ -35,20 +36,26 @@
   input[type=range]{width:200px;accent-color:var(--acc)}
   #thr-val{font:700 13px var(--mono);color:var(--acc);min-width:38px}
   main{display:grid;grid-template-columns:minmax(280px,32%) 1fr 1fr;
-       gap:0;min-height:calc(100vh - 215px)}
+       gap:0;min-height:calc(100vh - 280px)}
   #feed{border-right:1px solid var(--line);padding:12px;overflow-y:auto;
-        max-height:calc(100vh - 265px)}
-  .lane{padding:12px;overflow-y:auto;max-height:calc(100vh - 265px)}
+        max-height:calc(100vh - 330px)}
+  .lane{padding:12px;overflow-y:auto;max-height:calc(100vh - 330px)}
   .lane+.lane{border-left:1px solid var(--line)}
   .lane h2{font-size:13px;margin:0 0 4px;display:flex;align-items:center;gap:8px;
            flex-wrap:wrap}
   .lane h2 .sub{font-weight:400;font-size:10.5px;color:var(--dim)}
   .lane .model{font:11px var(--mono);color:var(--dim);margin-bottom:10px}
-  .meters{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+  .meters{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px}
   .meter{background:var(--panel);border:1px solid var(--line);border-radius:6px;
          padding:6px 8px;text-align:center}
   .meter .v{font:700 15px var(--mono)}
-  .meter .k{font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px}
+  .meter .k{font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;
+            line-height:1.25}
+  .meter-notes{font:10.5px/1.4 var(--mono);color:var(--dim);margin:0 0 10px;
+               padding:6px 8px;background:var(--panel2);border:1px solid var(--line);
+               border-radius:6px}
+  .meter-notes b{color:var(--txt);font-weight:700}
+  .meter-notes .ok{color:var(--good)} .meter-notes .warn{color:var(--amber)}
   .v-good{color:var(--good)} .v-bad{color:var(--bad)} .v-acc{color:var(--acc)}
   .msg{background:var(--panel);border:1px solid var(--line);border-radius:8px;
        padding:8px 10px;margin-bottom:8px}
@@ -89,9 +96,11 @@
   .vmeta{display:flex;gap:12px;font:10.5px var(--mono);color:var(--dim);margin-top:5px;
          flex-wrap:wrap}
   #receipt{border-top:1px solid var(--line);background:var(--panel);
-           padding:10px 18px;font:12px var(--mono);display:flex;gap:26px;
-           flex-wrap:wrap;align-items:center}
+           padding:10px 18px;font:12px var(--mono);display:flex;gap:18px;
+           flex-wrap:wrap;align-items:flex-start}
   #receipt b{color:var(--acc)}
+  #receipt .tall{display:flex;flex-direction:column;gap:2px;max-width:520px}
+  #receipt .sub{font-size:10.5px;color:var(--dim);line-height:1.35}
   #built{border-top:1px solid var(--line);background:var(--panel2);
          padding:8px 18px;font:10.5px var(--mono);color:var(--dim);
          display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -109,7 +118,10 @@
 </head>
 <body>
 <header>
-  <h1>🎆 SAFETY ONE <span class="dim">— moderation race</span></h1>
+  <div>
+    <h1>HOUSE RULES <span class="dim">— moderation race</span></h1>
+    <div class="brand-line">Built on Fireworks AI · NVIDIA Nemotron</div>
+  </div>
   <span id="mode-badge" class="badge b-replay">…</span>
   <span id="data-badge" class="badge b-mock">…</span>
   <span id="lane-badges"></span>
@@ -136,15 +148,17 @@
     <div id="feed-list"></div>
   </section>
   <section class="lane" id="lane-ours">
-    <h2>⚡ Safety One <span class="sub">— every decision by an NVIDIA model on Fireworks</span></h2>
+    <h2>House Rules <span class="sub">— NVIDIA Nemotron on Fireworks (tuned Nano → Ultra gray-zone)</span></h2>
     <div class="model" id="model-ours">ours</div>
     <div class="meters" id="m-ours"></div>
+    <div class="meter-notes" id="notes-ours"></div>
     <div id="list-ours"></div>
   </section>
   <section class="lane" id="lane-frontier">
-    <h2>Closed frontier model <span class="sub">— same-case baseline, cached</span></h2>
+    <h2>Closed frontier model <span class="sub">— GPT-6.1 Sol, same cases, cached</span></h2>
     <div class="model" id="model-frontier">frontier</div>
     <div class="meters" id="m-frontier"></div>
+    <div class="meter-notes" id="notes-frontier"></div>
     <div id="list-frontier"></div>
   </section>
 </main>
@@ -154,20 +168,21 @@
   <span id="rc-n">n=0</span>
   <span id="rc-acc">acc — / —</span>
   <span id="rc-f1">macro-F1 — / —</span>
-  <span id="rc-per1m">$/1M — / —</span>
+  <span id="rc-per1m" class="tall">$/1M — / —</span>
   <span id="rc-cost">$ — / —</span>
-  <span id="rc-p95">p95 — / —</span>
+  <span id="rc-lat" class="tall">latency — / —</span>
   <span id="rc-note" class="dim"></span>
 </div>
 
 <footer id="built">
-  <b>Built with</b>
-  <span>NVIDIA Nemotron models — Nano 3 30B (fine-tuned, LoRA) · Nemotron 3.5 Super VL (images) ·
-        Nemotron 3 Ultra (escalation)</span>
+  <b>Built on</b>
+  <span>Fireworks AI · NVIDIA Nemotron</span>
+  <span class="dim">·</span>
+  <span>Nemotron Nano 3 30B (LoRA fine-tuned) · Nemotron 3 Ultra (gray-zone escalation)</span>
   <span class="dim">·</span>
   <span>NVIDIA Nemotron Content Safety data</span>
   <span class="dim">·</span>
-  <span>Fireworks managed SFT · firectl · LoRA live-merge deployments · serverless inference</span>
+  <span>Fireworks Training API (LoRA SFT; job id not recorded) · LoRA live-merge deployments · serverless inference</span>
 </footer>
 
 <script>
@@ -175,6 +190,7 @@ const $ = id => document.getElementById(id);
 let S = {thr:.5, src:null, cases:{}, order:[], ours:[], frontier:[],
          done:false, started:0};
 let LANES = {};
+let PROD = null;  // production_basis from /api/meta (results/ + cache)
 
 // Recorded LIVE verdicts flag probs_reliable=false when P(unsafe) disagrees with
 // the label the system actually returned (e.g. escalation overrode it); those
@@ -242,9 +258,9 @@ function hopLabel(rt, model){
       if(m.includes("glimmer")) return "Muse Glimmer 30B (multilingual)";
       return "NVIDIA Nemotron Nano 3 — fine-tuned (multilingual)";
     case "vision":
-      return (m.includes("super") || m.includes("nemotron") || m.includes("-vl-") ||
-              m.includes("mock") || !m)
-        ? "NVIDIA Nemotron 3.5 Super VL (images)" : short(model)+" (images)";
+      // Vision lane is wired but no shipped demo receipt used it — never imply
+      // a vision model ran. Name the model on the receipt if present.
+      return short(model) ? short(model)+" (images)" : "vision lane (not evaluated)";
     case "escalation": case "escalated":
       return (m.includes("ultra") || m.includes("nemotron") || m.includes("mock") ||
               m.includes("escalat") || !m)
@@ -252,6 +268,20 @@ function hopLabel(rt, model){
     default:
       return short(model) || rt.toUpperCase();
   }
+}
+function prodFor(lane){
+  if(!PROD || !PROD.production) return null;
+  return lane === "frontier" ? PROD.production.frontier : PROD.production.ours;
+}
+function escNote(){
+  const e = PROD && PROD.demo_run && PROD.demo_run.escalations;
+  if(!e || !e.n) return "";
+  const lo = e.latency_ms_min, hi = e.latency_ms_max;
+  const loS = lo >= 1000 ? (lo/1000).toFixed(lo%1000?1:0)+" s" : lo+" ms";
+  const hiS = hi >= 1000 ? (hi/1000).toFixed(hi%1000?1:0)+" s" : hi+" ms";
+  return `p95 tail = <b class="warn">${e.n}/${e.of}</b> rows escalated to Ultra ` +
+         `serverless (<b>${loS}–${hiS}</b>); ` +
+         `non-escalated max <b>${e.non_escalated_max_ms} ms</b>`;
 }
 function trailHTML(r){
   const segs = String(r.route||"").split(">")
@@ -293,15 +323,41 @@ function whyNote(r){
 
 function renderMeters(lane){
   const m = metrics(S[lane]);
+  const p = prodFor(lane);
+  const prodUsd = p && p.usd_per_1m_msgs != null ? "$"+fmtInt(p.usd_per_1m_msgs) : "—";
+  const prodP95 = p && p.p95_ms != null ? fmtInt(p.p95_ms) : "—";
   $(`m-${lane}`).innerHTML = `
     <div class="meter"><div class="v">${m.n}</div><div class="k">done</div></div>
     <div class="meter"><div class="v ${m.correct<m.n?'v-bad':'v-good'}">${m.correct}✓</div><div class="k">correct</div></div>
     <div class="meter"><div class="v v-acc">${(m.acc*100).toFixed(1)}%</div><div class="k">accuracy</div></div>
-    <div class="meter"><div class="v">$${fmtInt(m.per1m)}</div><div class="k">$/1M msgs</div></div>
-    <div class="meter"><div class="v">${m.p50.toFixed(0)}</div><div class="k">p50 ms</div></div>
-    <div class="meter"><div class="v">${m.p95.toFixed(0)}</div><div class="k">p95 ms</div></div>
     <div class="meter"><div class="v">${(m.f1*100).toFixed(1)}</div><div class="k">macro-F1</div></div>
-    <div class="meter"><div class="v dim">${LANES[lane]||""}</div><div class="k">lane mode</div></div>`;
+    <div class="meter"><div class="v">${m.p50.toFixed(0)}</div><div class="k">p50 ms · demo</div></div>
+    <div class="meter"><div class="v">${m.p95.toFixed(0)}</div><div class="k">p95 ms · demo</div></div>
+    <div class="meter"><div class="v">$${fmtInt(m.per1m)}</div><div class="k">$/1M · this demo run</div></div>
+    <div class="meter"><div class="v v-acc">${prodUsd}</div><div class="k">$/1M · production basis</div></div>`;
+  const notes = $(`notes-${lane}`);
+  if(!notes) return;
+  const bits = [];
+  bits.push(`<b>this 100-message demo run</b> (low utilization, GPU time ÷ 100 msgs): ` +
+            `$${fmtInt(m.per1m)}/1M · p50 ${m.p50.toFixed(0)} ms · p95 ${m.p95.toFixed(0)} ms`);
+  if(p && p.usd_per_1m_msgs != null){
+    bits.push(`<b class="ok">production basis (from results/)</b>: ` +
+              `$${fmtInt(p.usd_per_1m_msgs)}/1M` +
+              (p.p50_ms != null ? ` · p50 ${fmtInt(p.p50_ms)} ms` : "") +
+              (p.p95_ms != null ? ` · p95 ${fmtInt(p.p95_ms)} ms` : "") +
+              (p.n ? ` · n=${fmtInt(p.n)} ${p.set||"nvidia_test"}` : ""));
+  }
+  if(lane === "ours"){
+    const en = escNote();
+    if(en) bits.push(en);
+    if(p && p.p95_ms != null)
+      bits.push(`production p95 on 3,340 rows = <b>${prodP95} ms</b> ` +
+                `(vs GPT ${PROD && PROD.production && PROD.production.frontier
+                  ? fmtInt(PROD.production.frontier.p95_ms) : "6,066"} ms)`);
+  } else if(p && p.p95_ms != null){
+    bits.push(`production p95 (billed frontier run) = <b>${prodP95} ms</b>`);
+  }
+  notes.innerHTML = bits.join("<br>");
 }
 
 function vrow(r){
@@ -332,13 +388,23 @@ function vrow(r){
 
 function renderReceipt(){
   const a = metrics(S.ours), b = metrics(S.frontier);
+  const po = prodFor("ours"), pf = prodFor("frontier");
   $("rc-n").textContent = a.n === b.n ? `n=${a.n} same cases`
                                        : `n=${a.n} ours / ${b.n} frontier (images: ours only)`;
   $("rc-acc").innerHTML = `acc <b>${(a.acc*100).toFixed(1)}%</b> vs ${(b.acc*100).toFixed(1)}%`;
   $("rc-f1").innerHTML = `macro-F1 <b>${(a.f1*100).toFixed(1)}</b> vs ${(b.f1*100).toFixed(1)}`;
-  $("rc-per1m").innerHTML = `$/1M msgs <b>$${fmtInt(a.per1m)}</b> vs $${fmtInt(b.per1m)}`;
-  $("rc-cost").innerHTML = `$ spent <b>${a.cost.toFixed(4)}</b> vs ${b.cost.toFixed(4)}`;
-  $("rc-p95").innerHTML = `p95 <b>${a.p95.toFixed(0)}ms</b> vs ${b.p95.toFixed(0)}ms`;
+  $("rc-per1m").innerHTML =
+    `<span>$/1M · <b>this demo run</b> <b>$${fmtInt(a.per1m)}</b> vs $${fmtInt(b.per1m)}</span>` +
+    `<span class="sub">production basis (from results/): ` +
+    `<b>$${po && po.usd_per_1m_msgs != null ? fmtInt(po.usd_per_1m_msgs) : "—"}</b>` +
+    ` vs $${pf && pf.usd_per_1m_msgs != null ? fmtInt(pf.usd_per_1m_msgs) : "—"} ` +
+    `(GPU rental amortized at full utilization)</span>`;
+  $("rc-cost").innerHTML = `$ spent (demo) <b>${a.cost.toFixed(4)}</b> vs ${b.cost.toFixed(4)}`;
+  const en = escNote();
+  $("rc-lat").innerHTML =
+    `<span>p50 <b>${a.p50.toFixed(0)}ms</b> vs ${b.p50.toFixed(0)}ms · ` +
+    `p95 <b>${a.p95.toFixed(0)}ms</b> vs ${b.p95.toFixed(0)}ms</span>` +
+    (en ? `<span class="sub">${en}</span>` : "");
 }
 
 function renderAll(){
@@ -425,6 +491,7 @@ fetch("/api/meta").then(r=>r.json()).then(m=>{
   S.MODE = m.mode;
   S.FALLBACK = !!m.replay_fallback;
   S.RECORDED_AT = m.cache_recorded_at || null;
+  PROD = m.production_basis || null;
   // replay shows where the cached verdicts came from, not today's backends
   LANES = m.mode === "live" ? m.lanes : (m.cache_mode || m.lanes);
   const live = m.mode === "live";

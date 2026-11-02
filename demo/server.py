@@ -28,6 +28,7 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs, unquote
 
 DEMO = Path(__file__).resolve().parent
+ROOT = DEMO.parent
 sys.path.insert(0, str(DEMO))
 import backends                      # noqa: E402
 from record import load_cases        # noqa: E402
@@ -37,13 +38,134 @@ CASES_PATH = DEMO / "cases.jsonl"
 CACHE_PATH = DEMO / "cached" / "results.jsonl"
 FALLBACK_CACHE = DEMO / "cached" / "fallback_recorded.jsonl"
 FALLBACK_META = DEMO / "cached" / "fallback_meta.json"
+PROD_BASIS_PATH = DEMO / "cached" / "production_basis.json"
 PAGE = DEMO / "index.html"
-IMAGE_ROOT = DEMO.parent / "data" / "vision" / "images"
+IMAGE_ROOT = ROOT / "data" / "vision" / "images"
 IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
                ".webp": "image/webp", ".gif": "image/gif"}
+OURS_SUMMARY = ROOT / "results" / "nvidia-v1" / "ours_summary.json"
+FINAL_HEADLINE = ROOT / "results" / "nvidia-v1" / "final_headline.json"
+VS_FRONTIER = ROOT / "results" / "stats" / "vs_frontier.json"
 
 # Active replay cache path — flipped by --replay-fallback.
 ACTIVE_CACHE = CACHE_PATH
+
+
+def _escalation_stats(cache: dict) -> dict | None:
+    """Count Ultra escalations + latencies from a replay cache (ours lane)."""
+    esc, non_max = [], 0.0
+    n = 0
+    for rec in cache.values():
+        ours = rec.get("ours") or {}
+        if ours.get("skipped"):
+            continue
+        n += 1
+        lat = float(ours.get("latency_ms") or 0)
+        route = str(ours.get("route") or "")
+        if "escalat" in route.lower():
+            esc.append({"id": rec.get("id"), "latency_ms": round(lat, 1),
+                        "route": route})
+        else:
+            non_max = max(non_max, lat)
+    if not n:
+        return None
+    esc.sort(key=lambda x: -x["latency_ms"])
+    return {
+        "n": len(esc),
+        "of": n,
+        "latency_ms_min": round(min(e["latency_ms"] for e in esc)) if esc else None,
+        "latency_ms_max": round(max(e["latency_ms"] for e in esc)) if esc else None,
+        "ids": [e["id"] for e in esc],
+        "latencies_ms": [e["latency_ms"] for e in esc],
+        "non_escalated_max_ms": round(non_max) if n > len(esc) else None,
+    }
+
+
+def load_production_basis(cache: dict | None = None) -> dict:
+    """Production $/1M + p95 from results/, demo-run notes from cached JSON.
+
+    Prefers live reads of results/nvidia-v1/* and results/stats/vs_frontier.json
+    so the UI cannot disagree with receipts; falls back to the shipped
+    demo/cached/production_basis.json. Escalation counts always come from the
+    active replay cache when available.
+    """
+    basis: dict = {}
+    if PROD_BASIS_PATH.exists():
+        try:
+            basis = json.loads(PROD_BASIS_PATH.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            basis = {}
+
+    prod = dict(basis.get("production") or {})
+    ours_prod = dict(prod.get("ours") or {})
+    front_prod = dict(prod.get("frontier") or {})
+    # Refresh from receipts when present (never invent / never favor-round).
+    try:
+        if FINAL_HEADLINE.exists():
+            fh = json.loads(FINAL_HEADLINE.read_text(encoding="utf-8"))
+            nt = ((fh.get("final") or {}).get("nvidia_test") or {})
+            if nt.get("usd_per_1m_msgs") is not None:
+                ours_prod["usd_per_1m_msgs"] = round(float(nt["usd_per_1m_msgs"]), 1)
+            if nt.get("p50_ms") is not None:
+                ours_prod["p50_ms"] = round(float(nt["p50_ms"]))
+            if nt.get("p95_ms") is not None:
+                ours_prod["p95_ms"] = round(float(nt["p95_ms"]))
+            if nt.get("n") is not None:
+                ours_prod["n"] = int(nt["n"])
+            ours_prod.setdefault("set", "nvidia_test")
+        elif OURS_SUMMARY.exists():
+            os_ = json.loads(OURS_SUMMARY.read_text(encoding="utf-8"))
+            nt = (((os_.get("systems") or {}).get("final") or {})
+                  .get("nvidia_test") or {})
+            if nt.get("usd_per_1m_msgs") is not None:
+                ours_prod["usd_per_1m_msgs"] = round(float(nt["usd_per_1m_msgs"]), 1)
+            if nt.get("p95_ms") is not None:
+                ours_prod["p95_ms"] = round(float(nt["p95_ms"]))
+            if nt.get("p50_ms") is not None:
+                ours_prod["p50_ms"] = round(float(nt["p50_ms"]))
+            if nt.get("n") is not None:
+                ours_prod["n"] = int(nt["n"])
+            ours_prod.setdefault("set", "nvidia_test")
+        if VS_FRONTIER.exists():
+            vf = json.loads(VS_FRONTIER.read_text(encoding="utf-8"))
+            base = (((vf.get("comparisons") or {}).get("ours_vs_gpt") or {})
+                    .get("baseline") or {})
+            if base.get("usd_per_1m_msgs") is not None:
+                front_prod["usd_per_1m_msgs"] = round(float(base["usd_per_1m_msgs"]))
+            if base.get("latency_p50_ms") is not None:
+                front_prod["p50_ms"] = round(float(base["latency_p50_ms"]))
+            if base.get("latency_p95_ms") is not None:
+                front_prod["p95_ms"] = round(float(base["latency_p95_ms"]))
+            if base.get("n") is not None:
+                front_prod["n"] = int(base["n"])
+            front_prod.setdefault("label", "GPT-6.1 Sol")
+            front_prod.setdefault("set", "nvidia_test")
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        pass
+
+    prod["ours"] = ours_prod
+    prod["frontier"] = front_prod
+    prod.setdefault("label", "production basis (from results/)")
+    prod.setdefault(
+        "note",
+        "GPU rental amortized at full utilization over measured run wall-clock "
+        "÷ model calls (concurrency 48), plus Ultra escalation tokens; "
+        "spin-up/idle excluded.",
+    )
+    basis["production"] = prod
+
+    demo_run = dict(basis.get("demo_run") or {})
+    demo_run.setdefault(
+        "label",
+        "this 100-message demo run (low utilization, GPU time ÷ 100 msgs)",
+    )
+    if cache:
+        esc = _escalation_stats(cache)
+        if esc:
+            demo_run["escalations"] = esc
+            demo_run["n"] = esc["of"]
+    basis["demo_run"] = demo_run
+    return basis
 
 
 def _json(handler, obj, status=200):
@@ -77,7 +199,7 @@ def sse(handler, event, obj):
 
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
-    server_version = "SafetyOneDemo/1.0"
+    server_version = "HouseRulesDemo/1.0"
 
     def log_message(self, fmt, *args):  # quiet; keep one line per request
         sys.stderr.write("  %s %s\n" % (self.address_string(), fmt % args))
@@ -113,6 +235,9 @@ class Handler(BaseHTTPRequestHandler):
                 # (lanes marked "none" = not run). The UI's MOCK badge keys off it.
                 "cache_live": self.server.cache_live,
                 "cases_from_cache": self.server.cases_from_cache,
+                # Cost/latency context: production-basis $/1M from results/,
+                # demo-run spend + Ultra escalation tail from the cache.
+                "production_basis": self.server.production_basis,
             })
         if u.path == "/api/race":
             return self._race(u)
@@ -213,7 +338,7 @@ def main():
                      "(run demo/record.py --live --require-live --fallback first)")
     srv = make_server(args.port, live=args.live, cache_path=cache_path,
                       replay_fallback=args.replay_fallback)
-    print(f"safety-one demo  http://{HOST}:{args.port}/  mode={srv.mode} "
+    print(f"house-rules demo  http://{HOST}:{args.port}/  mode={srv.mode} "
           f"lanes={srv.lane_modes}  cases={len(srv.cases)}  "
           f"cache={srv.cache_path}  (ctrl-C to stop)")
     try:
@@ -255,6 +380,7 @@ def make_server(port, live=False, cache_path=None, replay_fallback=False):
     srv.cache_live = bool(lanes) and all(v == "live" for v in lanes)
     srv.cases_from_cache = from_cache
     srv.lane_modes = backends.lane_modes()
+    srv.production_basis = load_production_basis(cache if mode == "replay" else None)
     return srv
 
 

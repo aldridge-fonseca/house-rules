@@ -50,8 +50,11 @@ Usage: scripts/train_launch.sh [--execute] [options]
   --eval-external-url URI Same, for the eval dataset.
   -h, --help              This help.
 
-Run from the safety-one/ directory with firectl authenticated and
+Run from the repo root with firectl authenticated and
 FIREWORKS_API_KEY / FIREWORKS_ACCOUNT_ID set (or .env sourced).
+
+Trainer job id / wall-clock / training cost for the shipped adapter: not recorded.
+This managed-SFT path is unused by the submission; see scripts/train_api_sft.py.
 USAGE
 }
 

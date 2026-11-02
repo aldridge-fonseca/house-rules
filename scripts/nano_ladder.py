@@ -1,6 +1,6 @@
 """Eval-ladder factories for the tuned Nano deployment.
 
-    python scripts/run_eval.py --run frozen-v1 --system full=scripts.nano_ladder:full ...
+    python scripts/run_eval.py --run nvidia-v1 --system full=scripts.nano_ladder:full ...
 
 Same systems as `safety_one.registry:<name>` (config/systems.yaml +
 config/router.yaml, mode="live"), with two text-eval adjustments:
@@ -16,10 +16,10 @@ config/router.yaml, mode="live"), with two text-eval adjustments:
 3. P(unsafe) is re-derived from the label token's top_logprobs keeping the
    highest-ranked variant per label (see _label_token_probs) — the shared
    parser inverted it on this deployment, which would mis-drive the gate.
-   (Round 5: fixed at the source in providers/fireworks.py; both now agree,
-   this override is kept so r4 receipts stay reproducible.)
+   (Later fixed at the source in providers/fireworks.py; both now agree.
+   This override is kept so earlier frozen-v1 receipts stay reproducible.)
 
-Round 5 adds `specialist-cal` / `full-cal` (dev-calibrated, config/systems.yaml)
+Also exposes `specialist-cal` / `full-cal` (dev-calibrated, config/systems.yaml)
 and the DEV-ONLY `calib-escalate-all` arm used by scripts/calibrate_gate.py.
 
 NANO_ESCALATION=mock pins the escalation role to its deterministic mock (use

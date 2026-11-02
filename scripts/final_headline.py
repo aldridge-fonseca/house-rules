@@ -8,7 +8,9 @@ receipts store $0), total divided by ALL rows n.
 import json, statistics, sys
 from pathlib import Path
 
+sys.path.insert(0, ".")
 sys.path.insert(0, "scripts")
+from safety_one.eval.metrics import _percentile
 OURS = json.load(open("results/nvidia-v1/ours_summary.json"))["systems"]
 SYSTEMS = [("final", "Ours (tuned NVIDIA Nano system)", "#76B900"), ("nano-untuned", "NVIDIA Nano, untuned (small)", "#B5DB66"),
            ("ultra-untuned", "NVIDIA Ultra 550B, untuned (large)", "#4E7A00"), ("frontier-router-a", "GPT-6.1 Sol", "#8a8a8a"),
@@ -61,7 +63,7 @@ def score_receipts(path, keep=lambda r: True):
     uns = [p for g, p in pairs if g == "unsafe"]; saf = [p for g, p in pairs if g == "safe"]
     return {"n": len(pairs), "macro_f1": 50 * sum(f1), "unsafe_recall": 100 * uns.count("unsafe") / len(uns),
             "over_block": 100 * saf.count("unsafe") / len(saf), "refused_pct": 100 * refused / len(pairs),
-            "p50_ms": statistics.median(lat) if lat else None,
+            "p50_ms": statistics.median(lat) if lat else None, "p95_ms": _percentile(lat, 95),
             "usd_per_1m_msgs": 1e6 * cost / len(pairs) if pairs else None}
 
 
@@ -82,14 +84,16 @@ print(f"{'system':36s} | NVIDIA-policy test F1 | recall | over-block | refused |
 for key, v in out.items():
     a, d = v["nvidia_test"], v["disguised_v1"]
     if not a:
-        print(f"{v['label']:36s} | (not run yet)"); continue
+        print(f"{v['label']:36s} | (receipts not published)"); continue
+    dtxt = f"{d['macro_f1']:5.1f}" if d else "  –  "
     print(f"{v['label']:36s} | {a['macro_f1']:5.1f} (n={a['n']}) | {a['unsafe_recall']:5.1f} | {a['over_block']:5.1f} | {a['refused_pct']:4.1f}% | "
-          f"{d['macro_f1'] if d else float('nan'):5.1f} | {a['usd_per_1m_msgs']:,.0f} | {a['p50_ms'] or 0:,.0f}")
+          f"{dtxt} | {a['usd_per_1m_msgs']:,.0f} | {a['p50_ms'] or 0:,.0f}")
+print("– disguised F1: earlier run, per-case receipts not published — not recomputable")
 
 W, H, x0, bw = 1100, 560, 330, 480
 s = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" font-family="Arial, sans-serif">',
      f'<rect width="{W}" height="{H}" fill="white"/><rect width="{W}" height="8" fill="#76B900"/>',
-     '<text x="550" y="44" font-size="24" text-anchor="middle">Content moderation under NVIDIA safety policy — LIVE</text>']
+     '<text x="550" y="44" font-size="24" text-anchor="middle">Content moderation under NVIDIA safety policy — NVIDIA Nemotron on Fireworks AI</text>']
 n_of = lambda ds: (  # noqa: E731
     f"{n:,}" if (n := (out["final"].get(ds) or {}).get("n")) else "?")
 for title, ds, top in ((f"Held-out NVIDIA policy test ({n_of('nvidia_test')} rows) — macro-F1", "nvidia_test", 90),
@@ -99,7 +103,7 @@ for title, ds, top in ((f"Held-out NVIDIA policy test ({n_of('nvidia_test')} row
         m = out[key][ds]; y = top + 14 + i * 40
         s.append(f'<text x="{x0 - 10}" y="{y + 21}" font-size="15" text-anchor="end">{label}</text>')
         if not m:
-            s.append(f'<text x="{x0 + 6}" y="{y + 21}" font-size="14" fill="#999">not run</text>'); continue
+            s.append(f'<text x="{x0 + 6}" y="{y + 21}" font-size="14" fill="#999">receipts not published</text>'); continue
         w = bw * max(m["macro_f1"] - 50, 1) / 50
         note = f'{m["macro_f1"]:.1f}   ${m["usd_per_1m_msgs"]:,.0f}/1M' + (f'   refused {m["refused_pct"]:.1f}%' if m["refused_pct"] >= 1 else "")
         s.append(f'<rect x="{x0}" y="{y}" width="{w:.1f}" height="30" rx="4" fill="{color}"/>')

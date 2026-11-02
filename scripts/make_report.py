@@ -2,7 +2,9 @@
 """Turn a results/<run>/ directory into judge-ready report artifacts.
 
     python scripts/make_report.py results/MOCK-integration-e2e
-    python scripts/make_report.py results/frozen-v1 --vision results/vision-r4 --png-dir docs/img
+    python scripts/make_report.py results/nvidia-v1 --png-dir docs/img
+    # results/frozen-v1 / results/vision-r4 regenerate an earlier internal run
+    # whose receipts are not published; prefer nvidia-v1 for submission figures.
 
 Reads receipt JSONL (preferred) or summary.json produced by safety_one.eval,
 plus RUN_INFO.json, and writes results/<run>/report/:

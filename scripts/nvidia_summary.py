@@ -6,9 +6,13 @@
 Dedicated-deployment calls carry $0 in receipts; GPU cost is allocated per
 run as rate x measured run wall-clock / model calls (results/nvidia-v1/
 ours_timing.json, one entry per system x dataset run, runs on a deployment
-were sequential). Receipts reused from results/frozen-v1 use that run's
-allocation (frozen-v1/nano_summary.json gpu_per_call_usd). Per-token costs
-(Ultra escalation / zero-shot) are the measured values in the receipts.
+were sequential). Receipts reused from an earlier internal run (frozen-v1;
+not published) use that run's allocation via ours_timing.json. Per-token
+costs (Ultra escalation / zero-shot) are the measured values in the receipts.
+
+Writes ``ours_summary.json``. The narrative ``OURS_SUMMARY.md`` is curated to
+match these numbers (including the cluster CIs from
+``scripts/stats_disguised_clustered.py``); re-run both scripts after receipt edits.
 """
 from __future__ import annotations
 

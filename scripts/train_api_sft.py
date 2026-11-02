@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Safety One — Fireworks Training API LoRA SFT launcher.
+"""House Rules — Fireworks Training API LoRA SFT launcher.
 
 Thin reproducible wrapper over the cookbook ``recipes/sft_loop.py``. Two jobs:
 
@@ -15,18 +15,25 @@ Thin reproducible wrapper over the cookbook ``recipes/sft_loop.py``. Two jobs:
                  so generation_eval stays off; eval = forward_backward loss on
                  the dev split, which is part of training.
 
-Data: safety-one/data/nvidia/filtered/train_sft.jsonl (19,830 rows),
-      safety-one/data/nvidia/filtered/dev_sft.jsonl (2,479 rows) — chat JSONL.
+Data: data/nvidia/filtered/train_sft.jsonl (19,830 rows),
+      data/nvidia/filtered/dev_sft.jsonl (2,479 rows) — chat JSONL.
+
+Defaults for the shipped Nano recipe: rank 8, alpha 32, 1 epoch, lr 1e-4,
+batch 32, ``--max-examples`` None (all 19,830 rows). Trainer job id, wall-clock
+and training cost: **not recorded**.
+
+``config/train.yaml`` is a draft for the unused managed-SFT (``firectl sftj``)
+path and must not be read as this Training API recipe.
 
 The recipe streams rows from the local file; it never calls the disabled
 dataset-upload endpoint. The final checkpoint is saved resumable+promotable and
 promoted to accounts/<acct>/models/<output_model_id>, which is what
 `firectl deployment create` serves as a live-merge LoRA.
 
-Env: FIREWORKS_API_KEY must be set (load safety-one/.env). Never log it.
+Env: FIREWORKS_API_KEY must be set (load ``.env`` from the repo root). Never log it.
 
 Run (from repo root):
-  /tmp/so-train-venv/bin/python safety-one/scripts/train_api_sft.py --job nano
+  python scripts/train_api_sft.py --job nano
 """
 
 from __future__ import annotations
@@ -103,7 +110,7 @@ def main() -> int:
     log = logging.getLogger("train_api_sft")
 
     if not os.environ.get("FIREWORKS_API_KEY"):
-        log.error("FIREWORKS_API_KEY is not set; source safety-one/.env first")
+        log.error("FIREWORKS_API_KEY is not set; source .env from the repo root first")
         return 2
     for path in (args.train_path, args.eval_path):
         if not os.path.exists(path):

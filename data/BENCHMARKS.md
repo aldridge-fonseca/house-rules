@@ -12,7 +12,7 @@ Current footprint: ~8 MB of ≤400 MB cap.
 | benchmark | rows | unsafe | source / how obtained | license |
 |---|---:|---:|---|---|
 | `openai_moderation.jsonl` | 1,680 | 522 | `openai/moderation-api-release` → `data/samples-1680.jsonl.gz`, direct download | MIT |
-| `wildguard_test.jsonl` | 1,725 | 754 | `walledai/WildGuardTest` parquet (ungated mirror of the gated `allenai/wildguardmix` test split) | ODC-BY |
+| `wildguard_test.ids.txt` (ids only; full JSONL not shipped) | 1,725 ids | 754 unsafe in full set | `walledai/WildGuardTest` parquet (ungated mirror of the gated `allenai/wildguardmix` test split). Regenerate JSONL locally with `scripts/prep_public.py --fetch`. | ODC-BY — **ids only** |
 | `xstest.jsonl` | 450 | 200 | `paul-rottger/xstest` → `xstest_prompts.csv`, direct download | CC-BY-4.0 |
 | `hatemojicheck.jsonl` | 3,930 | 2,654 | `HannahKirk/Hatemoji` GitHub `HatemojiCheck/test.csv` (HF copy `HannahRoseKirk/HatemojiCheck` is gated; same file) | CC-BY-4.0 |
 | `aegis2_test.jsonl` | 1,964 | 1,059 | `nvidia/Aegis-AI-Content-Safety-Dataset-2.0` → `test.json`, ungated | CC-BY-4.0 |
@@ -48,8 +48,10 @@ https://huggingface.co/datasets/ys-zong/VLGuard/discussions/2 — MIT, plus
 | vlguard | `instr-resp` entries: `safe_instruction` ⇒ safe; `unsafe_instruction` ⇒ unsafe; bare `instruction` (only on `safe:false` items, the "unsafes" subset) ⇒ unsafe | as above | `[]` — per-instruction categories not annotated upstream |
 
 Notes:
-- `wildguard_test` parquet = the 1,725-item **prompt-harm** slice of WildGuardTest
-  (the full test set also has response-harm/refusal axes not needed for the binary task).
+- `wildguard_test` ships as **ids only** (`wildguard_test.ids.txt`) because the upstream
+  set is access-controlled; message text is not republished. The parquet = the 1,725-item
+  **prompt-harm** slice of WildGuardTest (the full test set also has response-harm/refusal
+  axes not needed for the binary task).
 - `vlguard` rows carry `image_path = data/public/raw/vlguard/images/…` which does **not**
   exist until `test.zip` is fetched with HF_TOKEN; text-only evals should skip or
   treat them, vision evals must check existence.

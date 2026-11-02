@@ -56,10 +56,23 @@ def main():
     base = f"http://127.0.0.1:{port}"
     try:
         html = urllib.request.urlopen(base + "/", timeout=10).read().decode()
-        assert "SAFETY ONE" in html and "/api/race" in html
+        assert ("HOUSE RULES" in html or "House Rules" in html) and "/api/race" in html
+        assert "Built on Fireworks AI" in html and "NVIDIA Nemotron" in html
+        assert "firectl" not in html.lower()
+        assert "Super VL" not in html
         meta = json.loads(urllib.request.urlopen(base + "/api/meta",
                                                  timeout=10).read())
         assert meta["n_cases"] > 0
+        pb = meta.get("production_basis") or {}
+        prod = pb.get("production") or {}
+        ours_p = (prod.get("ours") or {}).get("usd_per_1m_msgs")
+        gpt_p = (prod.get("frontier") or {}).get("usd_per_1m_msgs")
+        assert ours_p is not None and abs(float(ours_p) - 56.2) < 0.05, ours_p
+        assert gpt_p is not None and abs(float(gpt_p) - 1820) < 1, gpt_p
+        esc = ((pb.get("demo_run") or {}).get("escalations") or {})
+        if meta["mode"] == "replay" and esc:
+            assert esc.get("n") == 7 and esc.get("of") == 100, esc
+            assert esc.get("non_escalated_max_ms") == 425, esc
         svg = urllib.request.urlopen(base + "/assets/meme1.svg",
                                      timeout=10).read()
         assert b"<svg" in svg

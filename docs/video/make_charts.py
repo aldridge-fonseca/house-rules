@@ -84,6 +84,8 @@ ORDER = [
 FONT_REG = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
+BRAND = "Built on Fireworks AI · NVIDIA Nemotron"
+
 
 def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(FONT_BOLD if bold else FONT_REG, size)
@@ -103,6 +105,13 @@ def new_canvas() -> tuple[Image.Image, ImageDraw.ImageDraw]:
 
 def footer(draw: ImageDraw.ImageDraw, text: str) -> None:
     draw.text((64, H - 48), text, font=font(22), fill=hex_rgb(MUTED))
+    tw = draw.textlength(BRAND, font=font(22))
+    draw.text((W - 64 - tw, H - 48), BRAND, font=font(22), fill=hex_rgb(MUTED))
+
+
+def partial_note(systems: dict[str, dict]) -> str:
+    n = systems["frontier-router-b"]["n"]
+    return f"Opus n={n}/3,340 (partial — re-run after finish). " if n < 3340 else ""
 
 
 def title(draw: ImageDraw.ImageDraw, text: str, y: int = 48) -> None:
@@ -228,7 +237,7 @@ def score_frontier(rows: list[dict]) -> dict:
         "refused_pct": round(100.0 * refused / n, 1) if n else 0.0,
         "p50_ms": round(percentile(lat, 50) or 0.0, 1),
         "p95_ms": round(percentile(lat, 95) or 0.0, 1),
-        "usd_per_1m_msgs": round(1e6 * cost / n, 1) if n else None,
+        "usd_per_1m_msgs": round(1e6 * cost / n, 2) if n else None,
         "partial": n < 3340,
         "source": None,
     }
@@ -296,7 +305,8 @@ def draw_quality_vs_cost(systems: dict[str, dict]) -> Path:
     title(draw, "Quality vs cost — NVIDIA-policy held-out test")
     draw.text(
         (64, 110),
-        "Macro-F1 (refusals = wrong)  ·  $ per 1M messages (log scale)",
+        f"Macro-F1 (refusals = wrong — Opus refused {systems['frontier-router-b']['refused_pct']:.1f}%, "
+        f"GPT {systems['frontier-router-a']['refused_pct']:.1f}%)  ·  $ per 1M messages (log scale)",
         font=font(28),
         fill=hex_rgb(MUTED),
     )
@@ -350,23 +360,22 @@ def draw_quality_vs_cost(systems: dict[str, dict]) -> Path:
             draw.ellipse([x - r - 6, y - r - 6, x + r + 6, y + r + 6], outline=color, width=4)
         draw.ellipse([x - r, y - r, x + r, y + r], fill=color)
         # label offset to avoid collisions
+        tag = f'{s["short"]}  {s["macro_f1"]:.1f}'
         lx, ly = x + 22, y - 28
         if key == "nano-untuned":
             lx, ly = x + 22, y + 8
         elif key == "ultra-untuned":
             lx, ly = x + 22, y - 40
-        elif key == "frontier-router-a":
-            lx, ly = x - 160, y - 36
-        elif key == "frontier-router-b":
-            lx, ly = x - 140, y - 36
-        tag = f'{s["short"]}  {s["macro_f1"]:.1f}'
+        elif key in ("frontier-router-a", "frontier-router-b"):
+            # left of the point, vertically centered — keeps the CI whisker clear
+            tw = draw.textlength(tag, font=font(26))
+            lx, ly = x - tw - 26, y - 14
         draw.text((lx, ly), tag, font=font(26, bold=s.get("highlight")), fill=color)
 
-    opus_n = systems["frontier-router-b"]["n"]
     foot = (
         f"Ours = GPU rental amortized at full utilization. Refusals scored as wrong. "
-        f"95% bootstrap CI on macro-F1. Opus n={opus_n}/3,340 (partial — re-run after finish)."
-    )
+        f"95% bootstrap CI on macro-F1. {partial_note(systems)}"
+    ).rstrip()
     footer(draw, foot)
     path = OUT / "quality_vs_cost.png"
     img.save(path, "PNG")
@@ -420,10 +429,9 @@ def draw_monthly_bill(systems: dict[str, dict]) -> Path:
             draw.text((left + bw + 16, y + bar_h / 2 - 16), label, font=font(30, bold=True), fill=color)
         y = y1 + gap
 
-    opus_n = systems["frontier-router-b"]["n"]
     footer(
         draw,
-        f"Ours = GPU rental amortized at full utilization. Opus n={opus_n}/3,340 (partial). "
+        f"Ours = GPU rental amortized at full utilization. {partial_note(systems)}"
         f"House Rules ≈ {money(bills['final'])}/mo vs Opus ≈ {money(bills['frontier-router-b'])}/mo.",
     )
     path = OUT / "monthly_bill.png"
@@ -477,8 +485,12 @@ def draw_latency(systems: dict[str, dict]) -> Path:
             draw.text((left + max(bw, 4) + 12, yy + bar_h / 2 - 14), lab, font=font(24), fill=hex_rgb(INK))
         y += group_h + gap
 
-    opus_n = systems["frontier-router-b"]["n"]
-    footer(draw, f"Opus n={opus_n}/3,340 (partial). House Rules p50 = {systems['final']['p50_ms']:.0f} ms.")
+    footer(
+        draw,
+        f"{partial_note(systems)}House Rules p50 = {systems['final']['p50_ms']:.0f} ms; "
+        f"GPT p50 {systems['frontier-router-a']['p50_ms']:,.0f} ms, "
+        f"Opus p50 {systems['frontier-router-b']['p50_ms']:,.0f} ms.",
+    )
     path = OUT / "latency.png"
     img.save(path, "PNG")
     return path
@@ -501,7 +513,7 @@ def draw_title_card() -> Path:
     )
     draw.text(
         (120, 920),
-        "Open NVIDIA models on Fireworks  ·  LIVE receipts",
+        "Built on Fireworks AI · NVIDIA Nemotron  ·  LIVE receipts",
         font=font(28),
         fill=hex_rgb(MUTED),
     )
@@ -613,7 +625,7 @@ def write_numbers(systems: dict[str, dict]) -> tuple[Path, Path]:
             "macro_f1": s["macro_f1"],
             "f1_ci95": s.get("f1_ci95"),
             "usd_per_1m_msgs": s["usd_per_1m_msgs"],
-            "monthly_bill_100m": round(s["usd_per_1m_msgs"] * 100, 1),
+            "monthly_bill_100m": round(s["usd_per_1m_msgs"] * 100),
             "p50_ms": s["p50_ms"],
             "p95_ms": s["p95_ms"],
             "refused_pct": s["refused_pct"],
@@ -628,10 +640,14 @@ def write_numbers(systems: dict[str, dict]) -> tuple[Path, Path]:
     lines = [
         "# Demo-video numbers (LIVE receipts)",
         "",
+        "**Built on Fireworks AI · NVIDIA Nemotron.**",
+        "",
         "Regenerate charts + this file: `.venv/bin/python docs/video/make_charts.py`",
         "",
         "Dataset: `nvidia_test` held-out NVIDIA-policy rows (target n=3,340).",
         "Refusals/errors scored as **incorrect**. Cost footnote: ours = GPU rental amortized at full utilization.",
+        "Frontier $/1M = (verdict receipt cost + spend-ledger cost of refusal rows) ÷ all n (`results/spend.json`).",
+        "Bill @100M = $/1M × 100.",
         "",
         "| System | n | Macro-F1 (95% CI) | $/1M msgs | Bill @100M/mo | p50 ms | p95 ms | refused % | Source |",
         "|---|---:|---:|---:|---:|---:|---:|---:|---|",
@@ -641,8 +657,9 @@ def write_numbers(systems: dict[str, dict]) -> tuple[Path, Path]:
         ci = s.get("f1_ci95")
         ci_s = f"{s['macro_f1']:.1f} [{ci[0]:.1f}, {ci[1]:.1f}]" if ci else f"{s['macro_f1']:.1f}"
         note = f"partial {s['n']}/3340" if s["partial"] else str(s["n"])
+        rate = f"{s['usd_per_1m_msgs']:,.2f}".rstrip("0").rstrip(".")
         lines.append(
-            f"| {s['short']} | {note} | {ci_s} | {s['usd_per_1m_msgs']:,.1f} | "
+            f"| {s['short']} | {note} | {ci_s} | {rate} | "
             f"{s['usd_per_1m_msgs'] * 100:,.0f} | {s['p50_ms']:.0f} | {s['p95_ms']:.0f} | "
             f"{s['refused_pct']:.1f} | `{s['source']}` |"
         )

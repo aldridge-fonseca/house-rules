@@ -97,7 +97,7 @@ def verify_subset(plan: list[dict], root: Path) -> list[str]:
 
 def receipt_coverage(run_dir: Path) -> dict[str, set]:
     """id+hash coverage of existing receipts in the run dir, for the
-    'subset of run frozen-v1' check once sibling systems have run."""
+    'subset of run' check once sibling systems have run."""
     coverage = {}
     if not run_dir.is_dir():
         return coverage
@@ -242,7 +242,8 @@ def execute(systems: list[str], rows: list[dict], run_dir: Path, concurrency: in
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--run", default="frozen-v1")
+    ap.add_argument("--run", default="nvidia-v1",
+                    help="run id under results/ (frozen-v1 = earlier internal run, receipts not published)")
     ap.add_argument("--out", default="results")
     ap.add_argument("--systems", nargs="+", default=list(DEFAULT_SYSTEMS))
     ap.add_argument("--seed", type=int, default=0)

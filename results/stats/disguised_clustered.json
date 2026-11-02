@@ -1,0 +1,141 @@
+{
+ "generated_by": "scripts/stats_disguised_clustered.py",
+ "seed": 0,
+ "n_boot": 2000,
+ "cluster_by": "meta.source_row_id",
+ "scoring": "evaluate()-compatible labels; empty/unparseable preds match neither class. Bootstrap resamples base-message clusters with replacement.",
+ "inputs": {
+  "disguised": "data/frozen/disguised_v1.jsonl",
+  "ours": "results/nvidia-v1/final.jsonl",
+  "n_eval_rows": 2222,
+  "n_clusters": 300
+ },
+ "comparisons": {
+  "ours_vs_ultra-untuned": {
+   "baseline_label": "Nemotron 3 Ultra 550B 0-shot",
+   "baseline_receipt": "results/nvidia-v1/ultra-untuned.jsonl",
+   "n_clusters": 300,
+   "n_rows": 2222,
+   "metric": "macro_f1",
+   "difference": -0.0001243888959571171,
+   "ci95": [
+    -0.028971241840608543,
+    0.027924071398392685
+   ],
+   "differences": {
+    "macro_f1": {
+     "diff": -0.0001243888959571171,
+     "ci95": [
+      -0.028971241840608543,
+      0.027924071398392685
+     ]
+    },
+    "unsafe_recall": {
+     "diff": 0.05540661304736372,
+     "ci95": [
+      0.018181818181818188,
+      0.09432321263380467
+     ]
+    },
+    "over_block_rate": {
+     "diff": 0.05439709882139618,
+     "ci95": [
+      0.015147727272727287,
+      0.0948658987263067
+     ]
+    }
+   },
+   "mcnemar_p": 0.9557072695793823,
+   "discordant_system_wins_losses": [
+    163,
+    161
+   ],
+   "ours_macro_f1": 0.8197512263804065,
+   "baseline_macro_f1": 0.8198756152763637
+  },
+  "ours_vs_nano-untuned": {
+   "baseline_label": "Nemotron Nano 30B untuned",
+   "baseline_receipt": "results/nvidia-v1/nano-untuned.jsonl",
+   "n_clusters": 300,
+   "n_rows": 2222,
+   "metric": "macro_f1",
+   "difference": 0.18693890683041892,
+   "ci95": [
+    0.14088013814534897,
+    0.2338315959106621
+   ],
+   "differences": {
+    "macro_f1": {
+     "diff": 0.18693890683041892,
+     "ci95": [
+      0.14088013814534897,
+      0.2338315959106621
+     ]
+    },
+    "unsafe_recall": {
+     "diff": -0.04647006255585351,
+     "ci95": [
+      -0.08707715918374312,
+      -0.007718036680300911
+     ]
+    },
+    "over_block_rate": {
+     "diff": -0.36899365367180414,
+     "ci95": [
+      -0.439321932637513,
+      -0.3014386864255235
+     ]
+    }
+   },
+   "mcnemar_p": 7.836277878032334e-55,
+   "discordant_system_wins_losses": [
+    456,
+    101
+   ],
+   "ours_macro_f1": 0.8197512263804065,
+   "baseline_macro_f1": 0.6328123195499876
+  },
+  "ours_vs_final-rawtext": {
+   "baseline_label": "final with clean-up OFF",
+   "baseline_receipt": "results/nvidia-v1/final-rawtext.jsonl",
+   "n_clusters": 300,
+   "n_rows": 2222,
+   "metric": "macro_f1",
+   "difference": 0.07967784000187361,
+   "ci95": [
+    0.05873038005049179,
+    0.1013689285163931
+   ],
+   "differences": {
+    "macro_f1": {
+     "diff": 0.07967784000187361,
+     "ci95": [
+      0.05873038005049179,
+      0.1013689285163931
+     ]
+    },
+    "unsafe_recall": {
+     "diff": 0.1277926720285969,
+     "ci95": [
+      0.100752448888347,
+      0.1532580678770747
+     ]
+    },
+    "over_block_rate": {
+     "diff": -0.03263825929283776,
+     "ci95": [
+      -0.06296434494195687,
+      -0.005086434385195884
+     ]
+    }
+   },
+   "mcnemar_p": 8.679687038787392e-21,
+   "discordant_system_wins_losses": [
+    278,
+    99
+   ],
+   "ours_macro_f1": 0.8197512263804065,
+   "baseline_macro_f1": 0.7400733863785329
+  }
+ }
+}

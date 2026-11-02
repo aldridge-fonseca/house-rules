@@ -2,6 +2,9 @@
 import json, sys
 from pathlib import Path
 
+# Defaults to an earlier internal layout (ours + frontier JSONL in one run dir).
+# That frozen-v1 receipt set is not published; prefer results/stats/vs_frontier.*
+# for the submission paired stats, or pass a local run dir that holds all four files.
 RUN = Path(sys.argv[1] if len(sys.argv) > 1 else "results/frozen-v1")
 SYSTEMS = [("full", "Ours: tuned NVIDIA Nano + router"), ("nvidia-ultra-zeroshot", "NVIDIA Ultra (untuned)"),
            ("frontier-router-a", "GPT-6.1 Sol"), ("frontier-router-b", "Claude Opus 5.5")]

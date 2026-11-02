@@ -2,18 +2,21 @@
 # Regenerate the judge report + slide charts + LIVE demo cache in one command.
 # Offline, $0: reads receipts only, makes no model calls, starts no lingering servers.
 #
-#   bash scripts/finalize.sh                     # results/frozen-v1 + results/vision-r4
-#   RUN=results/frozen-v2 VISION=results/vision-r4 bash scripts/finalize.sh
+#   bash scripts/finalize.sh                     # results/nvidia-v1 (submission receipts)
+#   RUN=results/nvidia-v1 VISION=results/vision-r4 bash scripts/finalize.sh
 #   SKIP_TESTS=1 bash scripts/finalize.sh        # skip the pytest step
-#   OURS=full bash scripts/finalize.sh           # pin the demo's ours lane (default: full — the NANO_SUMMARY headline)
+#   OURS=final bash scripts/finalize.sh          # pin the demo's ours lane
+#
+# Scripts that still accept results/frozen-v1 or results/vision-r4 regenerate an
+# earlier internal run whose receipts are not published. Prefer nvidia-v1.
 #
 # Picks up new systems automatically (e.g. specialist-cal / full-cal receipts):
-# the report charts/tables include them. The demo's ours lane stays `full`
-# (NANO_SUMMARY round-5 headline); pass OURS=full-cal to switch.
+# the report charts/tables include them. The demo's ours lane defaults to the
+# nvidia-v1 headline system name when present.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-RUN="${RUN:-results/frozen-v1}"
+RUN="${RUN:-results/nvidia-v1}"
 VISION="${VISION:-results/vision-r4}"
 IMG_DIR="${IMG_DIR:-docs/img}"
 PY="${PY:-.venv/bin/python}"

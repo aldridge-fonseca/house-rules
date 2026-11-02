@@ -3,7 +3,9 @@
   python3 demo/record.py                          # classify now -> cached/results.jsonl
   python3 demo/record.py --cases X --out Y        # custom paths
   python3 demo/record.py --run results/<run>      # from eval-run receipts (offline)
-  python3 demo/record.py --run results/frozen-v1 --vision results/vision-r4
+  python3 demo/record.py --run results/nvidia-v1
+  # (scripts that still mention results/frozen-v1 regenerate an earlier
+  #  internal run whose receipts are not published in this repo)
 
 --run reads receipts written by scripts/run_eval.py: results/<run>/<system>.jsonl
 rows carry {"id", "text", "prediction": {...verdict...}, "error"}. The demo's
@@ -26,8 +28,10 @@ Case selection (--select):
          arm refused and ours caught, attacks the frontier lane missed,
          gray-zone escalations, benign look-alikes, and honest misses where
          ours is wrong) plus a seeded random sample, and 2-3 image cases from
-         --vision receipts (ours = Super VL route; the frontier lane did not
-         run on images and is shown as "not run"). The case rows are stored in
+         --vision receipts when present (ours may show a vision route only if
+         the receipt did; the frontier lane did not run on images and is shown
+         as "not run"). The LIVE-RECORDED default cache has no vision-lane
+         verdict — the meme SVG was folded into text. Case rows are stored in
          each cache record ("case"), which the server replays.
 
 MOCK/LIVE labels per lane come from RUN_INFO.json modes, then
@@ -337,7 +341,7 @@ def vision_cases(vision_dir, limit=3):
         r = routed[cid]
         if (usable(cid) and r.get("gold_label") == "safe" and _lab(r) == "safe"
                 and _lab(text.get(cid)) == "safe" and str(cid).startswith("hatemoji")):
-            out.append((cid, "image case — benign image, Super VL passes it"))
+            out.append((cid, "image case — vision receipt (lane only if routed)"))
             break
     return out[:limit], {"routed": routed, "text": text, "per_image": per_image,
                          "modes": {k: str(v).lower() for k, v in
@@ -777,7 +781,7 @@ def main():
     ap.add_argument("--out", default=DEMO / "cached" / "results.jsonl", type=Path)
     ap.add_argument("--run", metavar="RUN",
                     help="record from eval receipts: results/<run> dir, a path, "
-                         "or a run name under safety-one/results/")
+                         "or a run name under results/")
     ap.add_argument("--vision", metavar="RUN", default=None,
                     help="vision A/B run dir (vision-routed/-text-only receipts) for image cases")
     ap.add_argument("--select", choices=("auto", "cases"), default="auto",

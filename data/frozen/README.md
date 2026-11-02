@@ -11,8 +11,12 @@ Eval rows in this repo:
 
 `disguised_v1.jsonl`: 300 base messages (150 unsafe / 150 safe, seed 20261102) drawn from
 the obfuscation-robustness slice (see `data/ROBUSTNESS.md`), each with every disguise
-variant it has (none, base64_wrap, leetspeak, homoglyph, zero_width, mixed_case,
-char_spacing, emoji_sub). Same bases across variants, so per-disguise deltas are paired.
+variant it has — **7 perturbations + the unperturbed control** (`none`, `base64_wrap`,
+`leetspeak`, `homoglyph`, `zero_width`, `mixed_case`, `char_spacing`, `emoji_sub`).
+Same bases across variants, so per-disguise deltas are paired. Gold labels inherit the
+source benchmarks' own policies (mixed; not NVIDIA-only). Because variants share a base
+message (`meta.source_row_id`), prefer the cluster bootstrap in
+`results/stats/disguised_clustered.md` over row-level CIs for paired comparisons on this set.
 
 **Redaction:** rows derived from WildGuardTest (`source == "wildguard_test"`, 320 rows)
 have `text` and `meta.orig_text` replaced by `[redacted:<row-id>]` because the upstream

@@ -104,13 +104,14 @@ def line(system, dataset, s):
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--run-dir", default=str(ROOT / "results/frozen-v1"))
+    ap.add_argument("--run-dir", default=str(ROOT / "results/nvidia-v1"),
+                    help="receipt dir (frozen-v1 = earlier internal run, receipts not published)")
     ap.add_argument("--wall-s", type=float, required=True,
                     help="measured wall-clock seconds of the ladder run on the deployment")
     ap.add_argument("--gpu-rate-usd-h", type=float, default=13.0, help="1x B200 on-demand $/h")
     ap.add_argument("--json-out", default=None)
     ap.add_argument("--ladder", nargs="+", default=list(LADDER),
-                    help="specialist-backed systems whose calls share --wall-s (default: r4 ladder)")
+                    help="specialist-backed systems whose calls share --wall-s")
     args = ap.parse_args(argv)
     ladder = tuple(args.ladder)
     run_dir = Path(args.run_dir)

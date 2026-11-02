@@ -1,4 +1,14 @@
-# Recommended capped run. Verify model eligibility and current pricing on build day.
+# DRAFT for the unused managed-SFT path (`firectl sftj` / scripts/train_sft.py).
+# The submission adapter was trained with the Fireworks Training API recipe in
+# scripts/train_api_sft.py --job nano:
+#   rank 8, alpha 32, 1 epoch, lr 1e-4, batch 32,
+#   data/nvidia/filtered/train_sft.jsonl (19,830 rows; --max-examples default None).
+# Trainer job id, wall-clock and training cost: not recorded.
+#
+# Values below (alpha 16, max_train_rows 8000) apply only if someone re-runs the
+# managed firectl path; they are not the Training API recipe that produced the
+# shipped LoRA.
+
 run:
   name: safety-one-nvidia-safety-lora
   max_train_rows: 8000
@@ -49,9 +59,10 @@ data:
   include_wildguardmix_train: false
   include_hatemoji_build: false
   notes:
-    - "No transferable saturation point is published; 8K is a run-time cap, not a learning-curve claim."
+    - "No transferable saturation point is published; 8K is a managed-SFT run-time cap, not a learning-curve claim."
     - "Do not mix benchmark test rows into training."
     - "Only add external training data after explicit taxonomy mapping and a same-test ablation."
+    - "Shipped Training API run used all 19,830 train_sft rows (job id/cost not recorded)."
 
 calibration:
   split: validation
@@ -78,7 +89,7 @@ fast_fallback:
     alpha: 16
     dropout: 0.05
     learning_rate: 0.0001
-  note: "Use only if primary run misses the launch/checkpoint window; keep validation/test frozen."
+  note: "Use only if primary managed-SFT run misses the launch/checkpoint window; keep validation/test frozen."
 
 build_day_minutes:
   data_and_launch: 20

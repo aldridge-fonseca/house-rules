@@ -1,23 +1,31 @@
-# nvidia-v1 — our systems (LIVE, 2026-11-02)
+# nvidia-v1 — our systems
 
 Task: binary moderation under **NVIDIA's content-safety policy** (Nemotron Content Safety 3.5 taxonomy).
-All numbers **LIVE** (our runs on Fireworks), 0 MOCK. Frontier systems in this folder (`frontier-*`) belong
-to another worker and are not summarised here.
+All numbers below are LIVE (our runs on Fireworks), 0 MOCK. Frontier baselines live in
+`results/nvidia-v1-frontier/` and are summarised in `results/stats/vs_frontier.md`.
+
+Numbers regenerate from receipts ($0): `.venv/bin/python scripts/nvidia_summary.py`
+(writes `ours_summary.json`). Clustered disguised CIs:
+`.venv/bin/python scripts/stats_disguised_clustered.py`.
 
 ## Data
 
 - `nvidia_test` = `data/nvidia/test.jsonl`, 3,340 rows, held out (never trained or calibrated on;
   `data/LEAKAGE.md`: 4 near-duplicates already removed from train). 590 English + 2,750 non-English
   (11 languages × 250) → `nvidia_test_non_english` slice.
-- `disguised_v1` = `data/frozen/disguised_v1.jsonl`, 2,222 rows, 8 perturbations (frozen eval set).
+- `disguised_v1` = `data/frozen/disguised_v1.jsonl`, 2,222 rows = **300 base messages × up to 8
+  variants** (7 obfuscation perturbations + the unperturbed `none` control). Gold labels inherit
+  the six source benchmarks' own policies (OpenAI Moderation, XSTest, Aegis 2.0, HatemojiCheck,
+  WildGuardTest, NVIDIA) — not NVIDIA's policy alone. 320 WildGuard-derived rows are redacted in
+  the shipped file and scored from receipts (`data/README.md`).
 
 ## Systems
 
 | system | what | where it ran |
 |---|---|---|
-| **`final`** | tuned NVIDIA Nemotron Nano 3 30B-A3B LoRA (`accounts/kldjalkdjwwpadjapdj/models/safety-one-nano-safety`, live-merge, 1× B200) + clean-up (stage-0 normalisation) + rules + router + gray-zone escalation to NVIDIA Nemotron 3 Ultra serverless = registry `full` via `scripts.nano_ladder:full` | nvidia_test: deployment `qd2gx85j` today. disguised_v1: **reused** from the earlier `frozen-v1` run (r4 receipts, not shipped here; same adapter/pipeline, deployment `ier7tjje`) |
+| **`final`** | tuned NVIDIA Nemotron Nano 3 30B-A3B LoRA (`accounts/kldjalkdjwwpadjapdj/models/safety-one-nano-safety`, live-merge, 1× B200) + clean-up (stage-0 normalisation) + rules + router + gray-zone escalation to NVIDIA Nemotron 3 Ultra serverless = registry `full` via `scripts.nano_ladder:full` | nvidia_test: deployment `qd2gx85j`. disguised_v1: **reused** from the earlier `frozen-v1` run (receipts not shipped here; same adapter/pipeline, deployment `ier7tjje`) |
 | **`nano-untuned`** | base `accounts/fireworks/models/nemotron-nano-3-30b-a3b`, no adapter, same prompt + clean-up + rules + router, **no escalation** (`scripts.nano_ladder:nano-untuned` = `+router` wiring) | own 1× B200 deployment `o4ubjdmu`, both datasets |
-| **`ultra-untuned`** | NVIDIA Nemotron 3 Ultra 550B-A55B zero-shot, serverless (`nvidia-ultra-zeroshot`) | nvidia_test today; disguised_v1 **reused** from the earlier `frozen-v1` run (`nvidia-ultra-zeroshot.jsonl`, not shipped here) |
+| **`ultra-untuned`** | NVIDIA Nemotron 3 Ultra 550B-A55B zero-shot, serverless (`nvidia-ultra-zeroshot`) | nvidia_test on this run; disguised_v1 **reused** from the earlier `frozen-v1` run (`nvidia-ultra-zeroshot.jsonl`, not shipped here) |
 | `specialist-only` (internal) | tuned Nano alone, no clean-up/rules/router/escalation | `qd2gx85j`, nvidia_test |
 | `final-rawtext` (internal) | `final` with `router.provider_text: raw` = clean-up OFF (models see the original disguised text) | `qd2gx85j`, disguised_v1 |
 
@@ -35,9 +43,9 @@ to another worker and are not summarised here.
 | nano-untuned | disguised_v1 | 2,222 | 11 | 66.1 | 63.3 | 94.0 | 62.2 | 775 | 1,086 | 63 |
 | ultra-untuned | disguised_v1 | 2,222 | 0 | 82.0 | 82.0 | 83.8 | 19.9 | 713 | 1,013 | 148 |
 
-Paired on the same rows (bootstrap 95 % CI, exact McNemar), `final` minus other, macro-F1 points:
+Paired on the same rows (row-level bootstrap 95 % CI, exact McNemar), `final` minus other, macro-F1 points:
 
-| other | dataset | Δ macro-F1 | 95 % CI | McNemar p |
+| other | dataset | Δ macro-F1 | 95 % CI (row) | McNemar p |
 |---|---|---:|---|---:|
 | ultra-untuned | nvidia_test | **+10.8** | [+9.4, +12.4] | 2.5e-54 |
 | ultra-untuned | disguised_v1 | −0.0 | [−1.6, +1.6] | 0.96 |
@@ -46,17 +54,35 @@ Paired on the same rows (bootstrap 95 % CI, exact McNemar), `final` minus other,
 | specialist-only | nvidia_test | +0.2 | [−0.4, +0.7] | 0.73 |
 | final-rawtext (clean-up OFF) | disguised_v1 | **+8.0** | [+6.4, +9.7] | 8.7e-21 |
 
+**Clustered CIs on disguised_v1** (base-message bootstrap, 300 clusters, 2,000 resamples, seed 0;
+`results/stats/disguised_clustered.{json,md}` — preferred for this set because variants of the
+same base are not independent):
+
+| other | Δ macro-F1 | 95 % CI (cluster) | vs row-level CI |
+|---|---:|---|---|
+| ultra-untuned | −0.0 | **[−2.9, +2.8]** | was [−1.6, +1.6] |
+| nano-untuned | +18.7 | **[+14.1, +23.4]** | was [+16.5, +20.8] |
+| final-rawtext | +8.0 | **[+5.9, +10.1]** | was [+6.4, +9.7] |
+
+Conclusions unchanged: tie with Ultra; large win over untuned Nano; clean-up still decisive.
+
 Reading:
 - **Fine-tuning is the win under NVIDIA's policy:** +12.6 macro-F1 over the same base model and
   +10.8 over the 18× larger Ultra zero-shot, at ~half Ultra's $/msg. Over-block falls from 27.8 %
   (untuned Nano) to 5.5 %. Ultra blocks less (3.3 %) but misses 13 % of unsafe content (recall 86.7).
 - **Non-English holds** (95.9 macro-F1 on 2,750 rows in 11 languages); Ultra drops to 81.8 there.
-- **Disguised text:** `final` ties Ultra zero-shot on macro-F1 (82.0 vs 82.0, CI spans 0) with higher
-  recall (89.4 vs 83.8) and more over-block (25.3 vs 19.9), at 47 % of the cost.
+- **Disguised text:** `final` ties Ultra zero-shot on macro-F1 (82.0 vs 82.0, cluster CI spans 0)
+  with higher recall (89.4 vs 83.8) and more over-block (25.3 vs 19.9), at 47 % of the cost. The
+  25.3 % over-block partly reflects mixed-policy gold (not NVIDIA-only).
 - **Clean-up step is worth +8.0 macro-F1 on disguised_v1** (74.0 → 82.0). It is decisive on
   base64: with clean-up OFF, recall on `base64_wrap` collapses to 0.7 % (macro-F1 34.1 vs 82.6).
 - Gray-zone escalation adds little on NVIDIA-policy data (+0.2, n.s.; escalates 3.2 % of rows, cuts
-  over-block 7.3 → 5.5); it mattered on the mixed-policy frozen set (r4).
+  over-block 7.3 → 5.5); it mattered more on the mixed-policy frozen set (earlier `frozen-v1` run;
+  receipts not published).
+
+Frontier disguised_v1 scores (GPT-6.1 Sol / Claude Opus 5.5) come from an earlier run whose
+per-case receipts are **not published** — not verifiable from this repo and excluded from all
+asserted numbers here.
 
 ## Clean-up ablation and per-perturbation (disguised_v1, LIVE)
 
@@ -98,9 +124,6 @@ Reading:
 | final-rawtext | disguised_v1:mixed_case | 300 | 0 | 81.0 | 80.9 | 88.7 | 26.7 | 624 | 1,155 | 12.7 | 68 |
 | final-rawtext | disguised_v1:none | 300 | 0 | 85.0 | 84.9 | 92.7 | 22.7 | 629 | 1,063 | 7.7 | 62 |
 | final-rawtext | disguised_v1:zero_width | 293 | 0 | 84.0 | 83.9 | 92.5 | 24.5 | 631 | 1,107 | 9.2 | 65 |
-| ultra-untuned | disguised_v1 | 2,222 | -0.0 | [-1.6, +1.6] | 0.96 |
-| nano-untuned | disguised_v1 | 2,222 | +18.7 | [+16.5, +20.8] | 7.8e-55 |
-| final-rawtext | disguised_v1 | 2,222 | +8.0 | [+6.4, +9.7] | 8.7e-21 |
 
 ## nvidia_test, all systems incl. internal (LIVE)
 
@@ -114,8 +137,14 @@ Reading:
 | ultra-untuned | nvidia_test_non_english | 2,750 | 0 | 87.5 | 81.8 | 85.4 | 1.1 | 713 | 1,644 | 0.0 | 112 |
 | specialist-only | nvidia_test | 3,340 | 0 | 96.9 | 95.1 | 98.0 | 7.3 | 671 | 944 | 0.0 | 52 |
 | specialist-only | nvidia_test_non_english | 2,750 | 0 | 97.9 | 95.9 | 99.2 | 9.1 | 682 | 966 | 0.0 | 52 |
-|---|---|---:|---:|---|---:|
-| ultra-untuned | nvidia_test | 3,340 | +10.8 | [+9.4, +12.4] | 2.5e-54 |
+
+Paired vs `final` on nvidia_test (row-level):
+
+| other | n | Δ macro-F1 | 95 % CI | McNemar p |
+|---|---:|---:|---|---:|
+| ultra-untuned | 3,340 | +10.8 | [+9.4, +12.4] | 2.5e-54 |
+| nano-untuned | 3,340 | +12.6 | [+11.0, +14.4] | 3.5e-49 |
+| specialist-only | 3,340 | +0.2 | [−0.4, +0.7] | 0.73 |
 
 ## Method notes
 
@@ -125,16 +154,22 @@ Reading:
 - **$ per 1M msgs** = measured per-token cost in the receipts (Ultra serverless $0.60/$2.40 per 1M
   tokens: zero-shot lane and `final`'s escalations) + allocated GPU time: $13/h (1× B200) × run
   wall-clock ÷ model calls in that run (`ours_timing.json`; e.g. `final` nvidia_test 3,340 calls in
-  49.3 s → $53 / 1M calls). Reused frozen-v1 `final` rows use the r4 allocation ($60 / 1M calls).
-  Spin-up/idle time is excluded (amortised away in steady-state serving).
+  49.3 s → $53 / 1M calls). Reused `frozen-v1` `final` rows use that earlier run's allocation
+  ($60 / 1M calls). Spin-up/idle time is excluded (amortised away in steady-state serving).
 - Errors: `nano-untuned` returned no `safe`/`unsafe` label on 12 rows (1 nvidia_test, 11
   disguised_v1; deterministic at temperature 0, not retried). They count as incorrect in every metric.
-- `final` on disguised_v1 is the r4 receipt set; `final-rawtext` ran today on the same adapter with r5
-  code. The only wiring difference is `provider_text`; r5's P(unsafe) parser fix changes only Ultra's
-  recorded probs (the tuned lane's probs come from the same `nano_ladder` parser in both).
+- `final` on disguised_v1 reuses the earlier `frozen-v1` receipt set; `final-rawtext` ran on the
+  same adapter with the current code. The only wiring difference is `provider_text`; the current
+  P(unsafe) parser fix changes only Ultra's recorded probs (the tuned lane's probs come from the
+  same `nano_ladder` parser in both).
 - Escalated share: `final` 3.2 % nvidia_test, 9.8 % disguised_v1; `final-rawtext` 11.3 %.
 - No row of `nvidia_test` was routed to the rule gate (all model-decided).
-- Reproduce tables ($0): `.venv/bin/python scripts/nvidia_summary.py` (writes `ours_summary.json`).
+- Training: LoRA SFT via the Fireworks Training API (`scripts/train_api_sft.py --job nano`);
+  rank 8, alpha 32, 1 epoch, lr 1e-4, batch 32 on `data/nvidia/filtered/train_sft.jsonl`
+  (19,830 rows available; `--max-examples` default None). Trainer job id, wall-clock and training
+  cost: **not recorded**. `config/train.yaml` is the draft for the unused managed-SFT (`firectl sftj`) path.
+- Reproduce tables ($0): `.venv/bin/python scripts/nvidia_summary.py` (writes `ours_summary.json`);
+  `.venv/bin/python scripts/stats_disguised_clustered.py` (writes `results/stats/disguised_clustered.*`).
 
 ## Files
 
@@ -142,3 +177,4 @@ Reading:
 `specialist-only.jsonl` (3,340), `final-rawtext.jsonl` (2,222): compact receipts (provider response
 bodies dropped; label, categories, probs, route, latency, cost, token usage kept; reused rows carry
 `reused_from`). `ours_timing.json` (GPU allocation inputs), `ours_summary.json` (all slices + paired tests).
+`final_headline.json` is produced by `scripts/final_headline.py` (owned elsewhere).
