@@ -1,0 +1,142 @@
+{
+ "generated_by": "scripts/stats_vs_frontier.py",
+ "seed": 0,
+ "n_boot": 10000,
+ "scoring": "refusals/errors scored as wrong (pred = flipped gold); inner join on row id",
+ "inputs": {
+  "ours": "results/nvidia-v1/final.jsonl",
+  "gpt": "results/nvidia-v1-frontier/frontier-router-a.jsonl",
+  "opus": "results/nvidia-v1-frontier/frontier-router-b.jsonl"
+ },
+ "ours_rows": 5562,
+ "comparisons": {
+  "ours_vs_gpt": {
+   "baseline_label": "GPT-6.1 Sol",
+   "baseline_rows": 3340,
+   "expected_rows": 3340,
+   "incomplete": false,
+   "n_paired": 3340,
+   "ours": {
+    "n": 3340,
+    "refusals": 0,
+    "accuracy": 0.9703592814371258,
+    "macro_f1": 0.9530229689637051,
+    "unsafe_recall": 0.9762875138940348,
+    "over_block_rate": 0.054602184087363496,
+    "latency_p50_ms": 644.495,
+    "latency_p95_ms": 1192.9805000000001,
+    "usd_total": 0.18768022015995448,
+    "usd_per_1m_msgs": 56.1916826826211
+   },
+   "baseline": {
+    "n": 3340,
+    "refusals": 62,
+    "accuracy": 0.7550898203592814,
+    "macro_f1": 0.7149017998798717,
+    "unsafe_recall": 0.6995183401259726,
+    "over_block_rate": 0.0109204368174727,
+    "latency_p50_ms": 3235.4030085043632,
+    "latency_p95_ms": 6066.489385602472,
+    "usd_total": 6.077584,
+    "usd_per_1m_msgs": 1819.6359281437126
+   },
+   "differences": {
+    "macro_f1": {
+     "diff": 0.2381211690838334,
+     "ci95": [
+      0.2210245091730987,
+      0.25543136865571475
+     ]
+    },
+    "unsafe_recall": {
+     "diff": 0.2767691737680622,
+     "ci95": [
+      0.2594623937654483,
+      0.29403093473356734
+     ]
+    },
+    "over_block_rate": {
+     "diff": 0.0436817472698908,
+     "ci95": [
+      0.0253348487992605,
+      0.0625
+     ]
+    }
+   },
+   "mcnemar": {
+    "ours_wins": 764,
+    "baseline_wins": 45,
+    "p_exact_two_sided": 1.0775616875471576e-169
+   },
+   "ratios": {
+    "latency_p50_ours_over_baseline": 0.19920084091716664,
+    "latency_p95_ours_over_baseline": 0.1966508839249413,
+    "usd_per_1m_ours_over_baseline": 0.03088072828939172
+   }
+  },
+  "ours_vs_opus": {
+   "baseline_label": "Claude Opus 5.5",
+   "baseline_rows": 3340,
+   "expected_rows": 3340,
+   "incomplete": false,
+   "n_paired": 3340,
+   "ours": {
+    "n": 3340,
+    "refusals": 0,
+    "accuracy": 0.9703592814371258,
+    "macro_f1": 0.9530229689637051,
+    "unsafe_recall": 0.9762875138940348,
+    "over_block_rate": 0.054602184087363496,
+    "latency_p50_ms": 644.495,
+    "latency_p95_ms": 1192.9805000000001,
+    "usd_total": 0.18768022015995448,
+    "usd_per_1m_msgs": 56.1916826826211
+   },
+   "baseline": {
+    "n": 3340,
+    "refusals": 434,
+    "accuracy": 0.7308383233532935,
+    "macro_f1": 0.6902532402014088,
+    "unsafe_recall": 0.6761763616154132,
+    "over_block_rate": 0.0390015600624025,
+    "latency_p50_ms": 2965.505278996716,
+    "latency_p95_ms": 5656.8282187472505,
+    "usd_total": 20.191088,
+    "usd_per_1m_msgs": 6045.235928143712
+   },
+   "differences": {
+    "macro_f1": {
+     "diff": 0.2627697287622963,
+     "ci95": [
+      0.2455733654432787,
+      0.2799786547976923
+     ]
+    },
+    "unsafe_recall": {
+     "diff": 0.3001111522786216,
+     "ci95": [
+      0.28228737804811277,
+      0.3175783325682742
+     ]
+    },
+    "over_block_rate": {
+     "diff": 0.015600624024960999,
+     "ci95": [
+      -0.004967507245099225,
+      0.03676532067676568
+     ]
+    }
+   },
+   "mcnemar": {
+    "ours_wins": 844,
+    "baseline_wins": 44,
+    "p_exact_two_sided": 6.994425944005234e-193
+   },
+   "ratios": {
+    "latency_p50_ours_over_baseline": 0.2173305859762436,
+    "latency_p95_ours_over_baseline": 0.21089212079064956,
+    "usd_per_1m_ours_over_baseline": 0.009295200940135296
+   }
+  }
+ }
+}

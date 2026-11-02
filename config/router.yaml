@@ -1,0 +1,79 @@
+# Router + confidence-gate config (stages 2-3).
+# `model:` fields may be placeholders; swap in the verified Fireworks
+# deployment IDs, nothing else.
+
+router:
+  # First matching check wins; anything unmatched -> default_route.
+  route_order: [rule, image, language, emoji]
+  default_route: specialist
+  image_route: vision
+  # A/B decided by eval on HatemojiCheck-style data: "vision" vs "specialist".
+  emoji_route: vision
+  emoji_density_threshold: 0.10   # emoji codepoints / non-space chars
+  non_english_route: multilingual
+  known_english: [en, eng, english]
+  min_script_chars: 3             # non-Latin script chars before we call a text non-English
+  # Text the model providers see: "normalized" (stage-0 output; raw kept in
+  # Message.meta.raw_text) or "raw". A/B this on the robustness set.
+  provider_text: normalized
+
+# Pre-gate decision: unsafe iff specialist P(unsafe) >= unsafe_threshold.
+# null = keep the generated label. Dev-calibrated values live in the
+# specialist-cal / full-cal overrides in config/systems.yaml.
+calibration:
+  unsafe_threshold: null
+
+confidence_gate:
+  enabled: true
+  escalation_route: escalation
+  # Escalate when P(unsafe) sits inside [lo, hi]. Category overrides widen the
+  # band for high-stakes categories (better safe). Thresholds are placeholders
+  # pending the calibration pass on the dev split.
+  gray_zone:
+    default: [0.35, 0.65]
+    category_overrides:
+      sexual_minor: [0.05, 0.95]
+      self_harm: [0.20, 0.80]
+      hate_identity: [0.30, 0.70]
+
+# Mock simulation parameters per route. Real latency/cost come from the actual
+# providers once keys exist; these keep the eval + demo runnable offline.
+providers:
+  specialist:
+    model: "accounts/fireworks/models/safety-one-nemotron-sft"   # placeholder
+    mock:
+      base_latency_ms: 45
+      per_char_ms: 0.02
+      cost_per_call_usd: 0.00002
+      cost_per_1k_chars_usd: 0.00008
+      sharpness: 1.0
+  vision:
+    model: "accounts/fireworks/models/nvidia-nemotron-3p5-super-vl-120b-a12b-nvfp4"  # on-demand only (verified 2026-11-02)
+    mock:
+      base_latency_ms: 220
+      per_char_ms: 0.05
+      cost_per_call_usd: 0.0008
+      cost_per_1k_chars_usd: 0.0003
+      image_cost_usd: 0.0012
+      sharpness: 1.1
+  multilingual:
+    model: "qwen3-guard-4b"                                      # placeholder
+    mock:
+      base_latency_ms: 60
+      per_char_ms: 0.03
+      cost_per_call_usd: 0.00003
+      cost_per_1k_chars_usd: 0.0001
+      sharpness: 1.0
+  escalation:
+    model: "accounts/fireworks/models/nemotron-3-ultra-nvfp4"  # NVIDIA Nemotron 3 Ultra 550B, Fireworks serverless $0.60/$2.40 per 1M (verified 2026-11-02)
+    mock:
+      base_latency_ms: 900
+      per_char_ms: 0.4
+      cost_per_call_usd: 0.004
+      cost_per_1k_chars_usd: 0.002
+      sharpness: 1.8
+
+mock:
+  seed: 20261102        # deterministic across runs/machines
+  jitter_ms: 15         # max added latency jitter
+  jitter_prob: 0.05     # max +/- probability jitter

@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Safety One — moderation race</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#131826; --panel2:#0f1420; --line:#232c42;
+    --txt:#dbe2f1; --dim:#7d8aa8; --acc:#4da3ff; --good:#3ecf8e; --bad:#ff5d6c;
+    --amber:#ffb454; --nv:#76b900; --mono:ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font:14px/1.45 -apple-system,Segoe UI,Roboto,sans-serif}
+  h1{font-size:17px;margin:0;letter-spacing:.5px}
+  code,.mono{font-family:var(--mono)}
+  header{display:flex;align-items:center;gap:14px;padding:12px 18px;
+         border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+  .badge{font:600 10px var(--mono);padding:3px 8px;border-radius:4px;
+         letter-spacing:.8px;text-transform:uppercase}
+  .b-live{background:#0d3325;color:var(--good);border:1px solid #1d5c40}
+  .b-replay{background:#3a2a10;color:var(--amber);border:1px solid #6b4d1c}
+  .b-mock{background:#262f4a;color:#9fb4dd;border:1px solid #36436b}
+  .b-mockbig{background:#3d1420;color:#ff9d9d;border:1px solid #8f3a3a;
+             font-size:11px;padding:4px 10px}
+  #controls{display:flex;align-items:center;gap:16px;padding:10px 18px;
+            border-bottom:1px solid var(--line);background:var(--panel2);
+            flex-wrap:wrap}
+  button{background:#1c2740;color:var(--txt);border:1px solid #33436b;
+         border-radius:6px;padding:7px 16px;font:600 13px inherit;cursor:pointer}
+  button:hover{background:#243252}
+  button:disabled{opacity:.4;cursor:default}
+  .slider-wrap{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--dim)}
+  input[type=range]{width:200px;accent-color:var(--acc)}
+  #thr-val{font:700 13px var(--mono);color:var(--acc);min-width:38px}
+  main{display:grid;grid-template-columns:minmax(280px,32%) 1fr 1fr;
+       gap:0;min-height:calc(100vh - 215px)}
+  #feed{border-right:1px solid var(--line);padding:12px;overflow-y:auto;
+        max-height:calc(100vh - 265px)}
+  .lane{padding:12px;overflow-y:auto;max-height:calc(100vh - 265px)}
+  .lane+.lane{border-left:1px solid var(--line)}
+  .lane h2{font-size:13px;margin:0 0 4px;display:flex;align-items:center;gap:8px;
+           flex-wrap:wrap}
+  .lane h2 .sub{font-weight:400;font-size:10.5px;color:var(--dim)}
+  .lane .model{font:11px var(--mono);color:var(--dim);margin-bottom:10px}
+  .meters{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+  .meter{background:var(--panel);border:1px solid var(--line);border-radius:6px;
+         padding:6px 8px;text-align:center}
+  .meter .v{font:700 15px var(--mono)}
+  .meter .k{font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px}
+  .v-good{color:var(--good)} .v-bad{color:var(--bad)} .v-acc{color:var(--acc)}
+  .msg{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+       padding:8px 10px;margin-bottom:8px}
+  .msg .mid{font:10px var(--mono);color:var(--dim)}
+  .msg .txt{margin:4px 0;word-break:break-word}
+  .msg img{max-width:100%;max-height:120px;border-radius:6px;display:block;margin-top:6px;background:#fff}
+  .gold{font:600 10px var(--mono);padding:2px 6px;border-radius:4px}
+  .g-safe{background:#0d3325;color:var(--good)}
+  .g-unsafe{background:#3d1420;color:var(--bad)}
+  .vrow{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+        padding:8px 10px;margin-bottom:8px}
+  .vrow .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .verdict{font:800 12px var(--mono);letter-spacing:.5px}
+  .verdict.safe{color:var(--good)} .verdict.unsafe{color:var(--bad)}
+  .mark{width:16px;text-align:center;font-weight:800}
+  .mark.ok{color:var(--good)} .mark.no{color:var(--bad)}
+  .trail{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:7px}
+  .hop-arrow{color:var(--dim);font-size:11px}
+  .route{font:700 9.5px var(--mono);padding:2px 7px;border-radius:10px;
+         letter-spacing:.4px;border:1px solid}
+  .r-rule{color:#c9a7ff;border-color:#5a3d8f;background:#231a38}
+  .r-specialist{color:#9fd86b;border-color:#4a7a1e;background:#1a2a10}
+  .r-vision{color:#5fe3c4;border-color:#1e6e5c;background:#0f2c26}
+  .r-multilingual{color:#ffc46b;border-color:#8a6224;background:#2e2312}
+  .r-escalated{color:#ff9d9d;border-color:#8f3a3a;background:#321414}
+  .r-frontier,.r-frontier-dry-run{color:#9aa7c0;border-color:#3c4763;background:#1a2132}
+  .r-total{color:#e8d9a0;border-color:#6b5a1c;background:#26200f}
+  .cat{font:10px var(--mono);color:#b7c4e2;background:#1b2340;border-radius:4px;
+       padding:1px 6px}
+  .normline{font:10.5px var(--mono);color:#8fd3b8;margin-top:5px;white-space:nowrap;
+            overflow:hidden;text-overflow:ellipsis}
+  .routenote{font:10px var(--mono);color:var(--dim);margin-top:4px}
+  .routenote.esc{color:#ff9d9d}
+  .pbar{height:5px;background:#1a2138;border-radius:3px;margin-top:6px;position:relative}
+  .pbar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;
+          background:linear-gradient(90deg,var(--good),var(--amber),var(--bad))}
+  .pbar u{position:absolute;top:-3px;width:2px;height:11px;background:#fff;opacity:.85}
+  .vmeta{display:flex;gap:12px;font:10.5px var(--mono);color:var(--dim);margin-top:5px;
+         flex-wrap:wrap}
+  #receipt{border-top:1px solid var(--line);background:var(--panel);
+           padding:10px 18px;font:12px var(--mono);display:flex;gap:26px;
+           flex-wrap:wrap;align-items:center}
+  #receipt b{color:var(--acc)}
+  #built{border-top:1px solid var(--line);background:var(--panel2);
+         padding:8px 18px;font:10.5px var(--mono);color:var(--dim);
+         display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  #built b{color:#9fd86b;font-weight:700}
+  .tag{display:inline-block;font:600 10px var(--mono);color:#ffd27a;background:#2e2312;
+       border:1px solid #6b4d1c;border-radius:4px;padding:1px 6px;margin:3px 0}
+  .others{font:10.5px var(--mono);color:var(--dim);margin-top:4px}
+  .others .ref{color:#ff9d9d;font-weight:700}
+  .vrow.skip{opacity:.65;border-style:dashed}
+  .hidden{display:none}
+  .dim{color:var(--dim)}
+  h3.feed-title{font-size:11px;color:var(--dim);text-transform:uppercase;
+                letter-spacing:1px;margin:2px 0 10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎆 SAFETY ONE <span class="dim">— moderation race</span></h1>
+  <span id="mode-badge" class="badge b-replay">…</span>
+  <span id="data-badge" class="badge b-mock">…</span>
+  <span id="lane-badges"></span>
+  <span class="dim mono" id="meta-line" style="font-size:11px"></span>
+</header>
+
+<div id="controls">
+  <button id="btn-100">▶ Run 100</button>
+  <button id="btn-all">Run all</button>
+  <button id="btn-stop" disabled>■ Stop</button>
+  <div class="slider-wrap">
+    <span>block more</span>
+    <input type="range" id="thr" min="5" max="95" value="50">
+    <span>over-block less</span>
+    <span id="thr-val">0.50</span>
+  </div>
+  <span class="dim" style="font-size:11px">same locked cases to both lanes ·
+    threshold re-scores cached P(unsafe) locally, no new calls</span>
+</div>
+
+<main>
+  <section id="feed">
+    <h3 class="feed-title">incoming chat stream</h3>
+    <div id="feed-list"></div>
+  </section>
+  <section class="lane" id="lane-ours">
+    <h2>⚡ Safety One <span class="sub">— every decision by an NVIDIA model on Fireworks</span></h2>
+    <div class="model" id="model-ours">ours</div>
+    <div class="meters" id="m-ours"></div>
+    <div id="list-ours"></div>
+  </section>
+  <section class="lane" id="lane-frontier">
+    <h2>Closed frontier model <span class="sub">— same-case baseline, cached</span></h2>
+    <div class="model" id="model-frontier">frontier</div>
+    <div class="meters" id="m-frontier"></div>
+    <div id="list-frontier"></div>
+  </section>
+</main>
+
+<div id="receipt">
+  <span class="dim">tally</span>
+  <span id="rc-n">n=0</span>
+  <span id="rc-acc">acc — / —</span>
+  <span id="rc-f1">macro-F1 — / —</span>
+  <span id="rc-per1m">$/1M — / —</span>
+  <span id="rc-cost">$ — / —</span>
+  <span id="rc-p95">p95 — / —</span>
+  <span id="rc-note" class="dim"></span>
+</div>
+
+<footer id="built">
+  <b>Built with</b>
+  <span>NVIDIA Nemotron models — Nano 3 30B (fine-tuned, LoRA) · Nemotron 3.5 Super VL (images) ·
+        Nemotron 3 Ultra (escalation)</span>
+  <span class="dim">·</span>
+  <span>NVIDIA Nemotron Content Safety data</span>
+  <span class="dim">·</span>
+  <span>Fireworks managed SFT · firectl · LoRA live-merge deployments · serverless inference</span>
+</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+let S = {thr:.5, src:null, cases:{}, order:[], ours:[], frontier:[],
+         done:false, started:0};
+let LANES = {};
+
+// Recorded LIVE verdicts flag probs_reliable=false when P(unsafe) disagrees with
+// the label the system actually returned (e.g. escalation overrode it); those
+// keep their recorded label instead of being re-scored by the slider.
+const effLabel = v => (v.probs_reliable === false) ? v.label
+                    : ((v.probs && v.probs.unsafe != null ? v.probs.unsafe
+                        : (v.label === "unsafe" ? 1 : 0)) >= S.thr)
+                      ? "unsafe" : "safe";
+const esc = s => s.replace(/[&<>"']/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const short = m => (m || "").split("/").pop() || "";
+const fmtMs  = x => (x||0) === 0 ? "0 ms" : (x<10 ? x.toFixed(1)+" ms" : Math.round(x)+" ms");
+const fmtUsd = x => (x||0) === 0 ? "$0" : "$"+(x).toFixed(5);
+const fmtP   = x => x == null ? "—" : (+x).toFixed(2);
+const fmtInt = x => Math.round(x).toLocaleString("en-US");
+
+function pct(sorted, p){ if(!sorted.length) return 0;
+  return sorted[Math.min(sorted.length-1, Math.ceil(p*sorted.length)-1)]; }
+
+function metrics(all){
+  const arr = all.filter(r => !r.skipped);
+  const n = arr.length;
+  let correct = 0, cost = 0;
+  const lats = [], cats = ["safe","unsafe"]; const f1s = [];
+  for(const c of cats){
+    let tp=0,fp=0,fn=0,gold=0;
+    for(const r of arr){
+      const pred = effLabel(r), g = S.cases[r.id].gold_label;
+      if(g===c) gold++;
+      if(pred===c && g===c) tp++;
+      else if(pred===c) fp++;
+      else if(g===c) fn++;
+    }
+    if(gold>0){
+      const pr = tp/(tp+fp||1), rc = tp/(tp+fn||1);
+      f1s.push(pr+rc ? 2*pr*rc/(pr+rc) : 0);
+    }
+  }
+  for(const r of arr){
+    if(effLabel(r) === S.cases[r.id].gold_label) correct++;
+    cost += r.cost_usd||0; lats.push(r.latency_ms||0);
+  }
+  lats.sort((a,b)=>a-b);
+  return {n, correct, acc:n?correct/n:0,
+          f1:f1s.length?f1s.reduce((a,b)=>a+b)/f1s.length:0,
+          cost, per1m:n?cost/n*1e6:0,
+          p50:pct(lats,.5), p95:pct(lats,.95)};
+}
+
+// ---- route trail ------------------------------------------------------
+// Each hop becomes a badge naming the actual NVIDIA model on Fireworks.
+const HOP_CLS = {rule:"r-rule", specialist:"r-specialist", vision:"r-vision",
+                 multilingual:"r-multilingual", escalation:"r-escalated",
+                 escalated:"r-escalated"};
+function hopLabel(rt, model){
+  const m = (model||"").toLowerCase();
+  switch(rt){
+    case "rule": return "Rules";
+    case "specialist":
+      if(m.includes("glimmer")) return "Muse Glimmer 30B — SFT hedge (non-NVIDIA)";
+      if(m.includes("qwen") && !m.includes("nvidia")) return short(model)+" (specialist)";
+      return "NVIDIA Nemotron Nano 3 — fine-tuned on Fireworks";
+    case "multilingual":
+      if(m.includes("qwen")) return short(model)+" (multilingual)";
+      if(m.includes("glimmer")) return "Muse Glimmer 30B (multilingual)";
+      return "NVIDIA Nemotron Nano 3 — fine-tuned (multilingual)";
+    case "vision":
+      return (m.includes("super") || m.includes("nemotron") || m.includes("-vl-") ||
+              m.includes("mock") || !m)
+        ? "NVIDIA Nemotron 3.5 Super VL (images)" : short(model)+" (images)";
+    case "escalation": case "escalated":
+      return (m.includes("ultra") || m.includes("nemotron") || m.includes("mock") ||
+              m.includes("escalat") || !m)
+        ? "NVIDIA Nemotron 3 Ultra (escalation)" : short(model)+" (escalation)";
+    default:
+      return short(model) || rt.toUpperCase();
+  }
+}
+function trailHTML(r){
+  const segs = String(r.route||"").split(">")
+              .map(s=>s.trim().toLowerCase()).filter(Boolean);
+  if(!segs.length) segs.push("model");
+  const chain = (r.raw && Array.isArray(r.raw.model_chain) && r.raw.model_chain.length)
+                ? r.raw.model_chain : String(r.model||"").split(">");
+  const total = `${fmtMs(r.latency_ms)} · ${fmtUsd(r.cost_usd)}`;
+  const chips = segs.map((s,i)=>{
+    const mdl = chain[i] || r.model || "";
+    const cls = HOP_CLS[s] || (s.startsWith("frontier") ? "r-frontier" : "r-specialist");
+    const stats = segs.length === 1 ? ` (${total})` : "";
+    return `<span class="route ${cls}" title="${esc(mdl)}">${esc(hopLabel(s,mdl))}${stats}</span>`;
+  }).join('<span class="hop-arrow">→</span>');
+  return `<div class="trail">${chips}` +
+    (segs.length>1 ? `<span class="route r-total" title="combined, all hops">Σ ${total}</span>` : "")
+    + `</div>`;
+}
+function normNote(r){
+  if(!r.normalized) return "";
+  const tr = (r.transforms||[]).map(esc).join(", ");
+  return `<div class="normline" title="${esc(r.normalized)}">` +
+         `<span class="dim">clean-up →</span> ${esc(r.normalized)}` +
+         (tr ? ` <span class="dim">(${tr})</span>` : "") + `</div>`;
+}
+function whyNote(r){
+  const rr = ((r.raw && r.raw.route_reasons) || [])
+             .filter(x => x && !/^default:/.test(x));
+  const pe = r.raw && r.raw.pre_escalation;
+  const out = [];
+  if(rr.length) out.push(`<div class="routenote">router: ${esc(rr.join(" · "))}</div>`);
+  if(pe){
+    const p0 = pe.probs && pe.probs.unsafe, p1 = r.probs && r.probs.unsafe;
+    out.push(`<div class="routenote esc">gray zone → escalated: ` +
+             `P(unsafe) ${fmtP(p0)} → ${fmtP(p1)}</div>`);
+  }
+  return out.join("");
+}
+
+function renderMeters(lane){
+  const m = metrics(S[lane]);
+  $(`m-${lane}`).innerHTML = `
+    <div class="meter"><div class="v">${m.n}</div><div class="k">done</div></div>
+    <div class="meter"><div class="v ${m.correct<m.n?'v-bad':'v-good'}">${m.correct}✓</div><div class="k">correct</div></div>
+    <div class="meter"><div class="v v-acc">${(m.acc*100).toFixed(1)}%</div><div class="k">accuracy</div></div>
+    <div class="meter"><div class="v">$${fmtInt(m.per1m)}</div><div class="k">$/1M msgs</div></div>
+    <div class="meter"><div class="v">${m.p50.toFixed(0)}</div><div class="k">p50 ms</div></div>
+    <div class="meter"><div class="v">${m.p95.toFixed(0)}</div><div class="k">p95 ms</div></div>
+    <div class="meter"><div class="v">${(m.f1*100).toFixed(1)}</div><div class="k">macro-F1</div></div>
+    <div class="meter"><div class="v dim">${LANES[lane]||""}</div><div class="k">lane mode</div></div>`;
+}
+
+function vrow(r){
+  if(r.skipped) return `<div class="vrow skip"><div class="top">
+      <span class="mark">–</span><span class="verdict">NOT RUN</span>
+      <span class="dim mono" style="font-size:10px">#${esc(r.id)}</span></div>
+      <div class="routenote">${esc(r.note||"")}</div></div>`;
+  const lab = effLabel(r), gold = S.cases[r.id].gold_label;
+  const ok = lab === gold;
+  const p = r.probs?.unsafe ?? (lab==="unsafe"?1:0);
+  const cats = (r.categories||[]).map(c=>`<span class="cat">${esc(c)}</span>`).join("");
+  return `<div class="vrow">
+    <div class="top">
+      <span class="mark ${ok?'ok':'no'}">${ok?'✓':'✗'}</span>
+      <span class="verdict ${lab}">${lab.toUpperCase()}</span>
+      <span class="dim mono" style="font-size:10px">#${r.id}</span>${cats}
+    </div>
+    ${trailHTML(r)}
+    ${normNote(r)}${whyNote(r)}
+    <div class="pbar"><i style="width:${(p*100).toFixed(0)}%"></i>
+         <u style="left:${(S.thr*100).toFixed(0)}%"></u></div>
+    <div class="vmeta"><span>p(unsafe)=${p.toFixed(2)}</span>
+      <span>${(r.latency_ms||0).toFixed(0)} ms</span>
+      <span>$${(r.cost_usd||0).toFixed(5)}</span>
+      <span title="${esc(r.model||"")}">${esc(r.model||"")}</span></div>
+  </div>`;
+}
+
+function renderReceipt(){
+  const a = metrics(S.ours), b = metrics(S.frontier);
+  $("rc-n").textContent = a.n === b.n ? `n=${a.n} same cases`
+                                       : `n=${a.n} ours / ${b.n} frontier (images: ours only)`;
+  $("rc-acc").innerHTML = `acc <b>${(a.acc*100).toFixed(1)}%</b> vs ${(b.acc*100).toFixed(1)}%`;
+  $("rc-f1").innerHTML = `macro-F1 <b>${(a.f1*100).toFixed(1)}</b> vs ${(b.f1*100).toFixed(1)}`;
+  $("rc-per1m").innerHTML = `$/1M msgs <b>$${fmtInt(a.per1m)}</b> vs $${fmtInt(b.per1m)}`;
+  $("rc-cost").innerHTML = `$ spent <b>${a.cost.toFixed(4)}</b> vs ${b.cost.toFixed(4)}`;
+  $("rc-p95").innerHTML = `p95 <b>${a.p95.toFixed(0)}ms</b> vs ${b.p95.toFixed(0)}ms`;
+}
+
+function renderAll(){
+  renderMeters("ours"); renderMeters("frontier");
+  for(const lane of ["ours","frontier"]){
+    $(`list-${lane}`).innerHTML =
+      S[lane].slice(-14).reverse().map(vrow).join("");
+  }
+  renderReceipt();
+}
+
+function addCase(c){
+  S.cases[c.id] = c; S.order.push(c.id);
+  const img = c.image_path ? `<img src="${c.image_path}" alt="case image">` : "";
+  const el = document.createElement("div");
+  el.className = "msg"; el.id = `msg-${c.id}`;
+  const pert = c.perturbation && c.perturbation !== "none" ? ` · ${esc(c.perturbation)}` : "";
+  const tag = c.tag ? `<div class="tag">${esc(c.tag)}</div>` : "";
+  const others = (c.others||[]).map(o => o.refused
+      ? `<span class="ref">${esc(o.name)}: REFUSED (provider filter, no verdict)</span>`
+      : `${esc(o.name)}: ${esc(String(o.label||"—").toUpperCase())}`).join(" · ");
+  el.innerHTML = `<span class="mid">#${esc(c.id)} · ${c.lang||"?"} · ${esc(c.source||"")}${pert}</span>
+    ${tag}<div class="txt">${esc(c.text)}</div>${img}
+    <span class="gold g-${c.gold_label}">gold: ${c.gold_label}</span>
+    ${others ? `<div class="others">also: ${others}</div>` : ""}`;
+  $("feed-list").appendChild(el);
+  el.scrollIntoView({block:"nearest"});
+}
+
+function onVerdict(r){
+  S[r.lane].push(r);
+  const ml = $(`model-${r.lane}`);
+  if(ml && !ml.dataset.set && !r.skipped){
+    ml.dataset.set = "1";
+    ml.textContent = (r.lane === "frontier" ? "closed frontier · " : "") +
+                     (r.model || "") + ` · ${LANES[r.lane]||""}`;
+  }
+  renderAll();
+  const el = $(`msg-${r.id}`);
+  if(el) el.scrollIntoView({block:"nearest"});
+}
+
+function run(n){
+  if(S.src) S.src.close();
+  S = {thr:S.thr, src:null, cases:{}, order:[], ours:[], frontier:[],
+       done:false, started:Date.now()};
+  delete $("model-ours").dataset.set; delete $("model-frontier").dataset.set;
+  $("feed-list").innerHTML = ""; renderAll();
+  $("rc-note").textContent = "running…";
+  $("btn-stop").disabled = false;
+  const src = new EventSource(`/api/race?n=${n||""}`);
+  S.src = src;
+  src.addEventListener("case", e => addCase(JSON.parse(e.data)));
+  src.addEventListener("verdict", e => onVerdict(JSON.parse(e.data)));
+  src.addEventListener("receipt", e => {
+    src.close(); S.src = null; $("btn-stop").disabled = true;
+    const a = metrics(S.ours), b = metrics(S.frontier);
+    const stamp = S.RECORDED_AT
+      ? new Date(S.RECORDED_AT * 1000).toISOString().replace(/\.\d+Z$/, "Z")
+      : null;
+    $("rc-note").textContent =
+      `done in ${((Date.now()-S.started)/1000).toFixed(1)}s · ` +
+      `${S.MODE === "replay"
+          ? (S.MOCKED ? "replay of non-live cache"
+                      : (S.FALLBACK
+                          ? `LIVE-RECORDED fallback replay${stamp ? " · " + stamp : ""}`
+                          : `LIVE-RECORDED replay${stamp ? " · " + stamp : ""}`))
+          : (S.MOCKED ? "live classify (backends not live)"
+                      : "live run")}` +
+      ` · cost/correct $${(a.cost/Math.max(a.correct,1)).toFixed(5)} vs ` +
+      `$${(b.cost/Math.max(b.correct,1)).toFixed(5)}`;
+  });
+  src.onerror = () => { if(S.src){ $("rc-note").textContent = "stream ended"; } };
+}
+
+$("thr").oninput = e => { S.thr = e.target.value/100;
+  $("thr-val").textContent = S.thr.toFixed(2); renderAll(); };
+$("btn-100").onclick = () => run(100);
+$("btn-all").onclick = () => run(0);
+$("btn-stop").onclick = () => { if(S.src){ S.src.close(); S.src=null;
+  $("btn-stop").disabled = true; $("rc-note").textContent = "stopped"; } };
+
+fetch("/api/meta").then(r=>r.json()).then(m=>{
+  S.MODE = m.mode;
+  S.FALLBACK = !!m.replay_fallback;
+  S.RECORDED_AT = m.cache_recorded_at || null;
+  // replay shows where the cached verdicts came from, not today's backends
+  LANES = m.mode === "live" ? m.lanes : (m.cache_mode || m.lanes);
+  const live = m.mode === "live";
+  // Replay: LIVE only when the server says every cached lane is LIVE.
+  // Live classify: non-live whenever a lane backend is a mock.
+  const mocked = live
+    ? Object.values(m.lanes||{}).some(x => String(x).includes("mock"))
+    : !(m.cache_live === true);
+  S.MOCKED = mocked;
+  const stamp = S.RECORDED_AT
+    ? new Date(S.RECORDED_AT * 1000).toISOString().replace(/\.\d+Z$/, "Z")
+    : null;
+  const mb = $("mode-badge");
+  mb.textContent = live ? "LIVE" : (S.FALLBACK ? "FALLBACK REPLAY" : "CACHED REPLAY");
+  mb.className = "badge " + (live ? "b-live" : "b-replay");
+  const db = $("data-badge");
+  if(mocked){
+    db.textContent = "NOT LIVE — cache/backends are simulated";
+    db.className = "badge b-mockbig";
+  } else {
+    db.textContent = live
+      ? "LIVE CALLS"
+      : (`LIVE-RECORDED${stamp ? " · " + stamp : ""}`);
+    db.className = "badge b-live";
+  }
+  const lb = live ? m.lanes : (m.cache_mode || m.lanes);
+  $("lane-badges").innerHTML =
+    `<span class="badge b-mock">ours: ${esc(String(lb.ours))}</span>
+     <span class="badge b-mock">frontier: ${esc(String(lb.frontier))}</span>`;
+  if(!live && m.cases_from_cache && String(m.cache_origin||"").startsWith("run:")){
+    $("rc-note").textContent = "cases picked from LIVE eval receipts: curated highlights first, then a " +
+      "seeded random sample — full-set metrics are in results/<run>/report/";
+  } else if(!live && S.FALLBACK){
+    $("rc-note").textContent = "replaying frozen LIVE-RECORDED fallback" +
+      (stamp ? ` (${stamp})` : "") + " — offline stage-safe copy";
+  }
+  $("meta-line").textContent = `${m.n_cases} locked cases · ${m.case_source}` +
+    (m.cache ? ` · replay: ${m.cache}` : "") +
+    (m.cache_origin ? ` · src: ${m.cache_origin}` : "") +
+    (m.cache_systems && m.cache_systems.ours
+      ? ` · systems: ${m.cache_systems.ours} vs ${m.cache_systems.frontier||"—"}` : "") +
+    (stamp ? ` · recorded: ${stamp}` : "");
+  renderAll();
+  // ?run=N (0 = all) starts the race on load — handy for a hands-free demo
+  const q = new URLSearchParams(location.search).get("run");
+  if(q !== null) run(parseInt(q, 10) || 0);
+});
+</script>
+</body>
+</html>

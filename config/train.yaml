@@ -1,0 +1,89 @@
+# Recommended capped run. Verify model eligibility and current pricing on build day.
+run:
+  name: safety-one-nvidia-safety-lora
+  max_train_rows: 8000
+  max_train_minutes: 90
+  epochs: 1
+  output_tokens: 64
+  split_policy: seeded_shuffled_train_only
+  exclude_splits: [validation, test]
+
+model:
+  # This Fireworks page was verified as managed-SFT and deploy eligible.
+  # Check account entitlement, shape, quote, and current catalog before submission.
+  base_model: accounts/fireworks/models/nemotron-nano-3-30b-a3b
+  required_family: nvidia
+  fallback:
+    base_model: accounts/fireworks/models/muse-glimmer-30b
+    method: training_api_decision_loop
+    note: "Uses NVIDIA data; not NVIDIA weights. Decision-loop API is not established for the NVIDIA adapter."
+
+objective:
+  type: supervised_chat_json
+  target_format: '{"label":"unsafe","categories":["violence"]}'
+  binary_label_first: true
+  categories: taxonomy_slugs
+  categories_for_safe: []
+  generate_explanation: false
+
+lora:
+  rank: 8
+  alpha: 16
+  dropout: 0.05
+  learning_rate: 0.0001
+  # managed firectl SFT path exposes rank and epochs; the remaining values below
+  # are intended only if the selected training surface exposes these settings.
+  warmup_ratio: 0.03
+  scheduler: cosine
+  batch_size: platform_default
+  precision: platform_default
+
+data:
+  primary: nvidia/Nemotron-3.5-Content-Safety-Dataset
+  primary_fraction: 1.0
+  max_rows: 8000
+  source_order: "seeded shuffle from train-only prep; inspect safe/unsafe and language balance before upload"
+  text_only: true
+  include_multilingual_labeled_rows: true
+  include_aegis20_train: false
+  include_wildguardmix_train: false
+  include_hatemoji_build: false
+  notes:
+    - "No transferable saturation point is published; 8K is a run-time cap, not a learning-curve claim."
+    - "Do not mix benchmark test rows into training."
+    - "Only add external training data after explicit taxonomy mapping and a same-test ablation."
+
+calibration:
+  split: validation
+  temperature_scaling: true
+  temperature_scope: binary_global
+  tune_binary_threshold: true
+  tune_category_thresholds: true
+  min_category_positive_rows: 100
+  fallback_threshold: global
+  provisional_escalation_band:
+    p_unsafe_at_most: 0.10
+    p_unsafe_at_least: 0.90
+    otherwise: escalate
+  optimize_on: [unsafe_recall, overblock_rate, escalation_fraction, cost]
+
+fast_fallback:
+  max_train_rows: 3000
+  max_train_minutes: 60
+  epochs: 1
+  method: managed_chat_sft
+  base_model: accounts/fireworks/models/muse-glimmer-30b
+  lora:
+    rank: 8
+    alpha: 16
+    dropout: 0.05
+    learning_rate: 0.0001
+  note: "Use only if primary run misses the launch/checkpoint window; keep validation/test frozen."
+
+build_day_minutes:
+  data_and_launch: 20
+  training_cap: 90
+  deploy_and_smoke: 30
+  calibration_and_eval: 45
+  report_and_cleanup: 25
+  total: 210

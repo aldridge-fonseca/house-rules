@@ -1,0 +1,111 @@
+{
+  "dataset": "nvidia_test (held-out NVIDIA Nemotron Content Safety 3.5 policy)",
+  "dataset_n_target": 3340,
+  "refusal_policy": "refusals and errors scored as incorrect (label flipped vs gold)",
+  "cost_footnote": "Ours = GPU rental amortized at full utilization ($13/h \u00d7 wall \u00f7 calls). Ultra/frontier = measured tokens.",
+  "systems": {
+    "final": {
+      "label": "House Rules (tuned Nano pipeline)",
+      "short": "House Rules",
+      "n": 3340,
+      "partial": false,
+      "macro_f1": 95.3,
+      "f1_ci95": [
+        94.4,
+        96.2
+      ],
+      "usd_per_1m_msgs": 56.2,
+      "monthly_bill_100m": 5620.0,
+      "p50_ms": 644.5,
+      "p95_ms": 1193.0,
+      "refused_pct": 0.0,
+      "source": "results/nvidia-v1/ours_summary.json \u2192 systems.final.nvidia_test",
+      "ci_source": "bootstrap macro-F1 on results/nvidia-v1/final.jsonl (nv-test ids; refusal=wrong)",
+      "cost_note": "GPU rental amortized at full utilization (+ Ultra escalate tokens)"
+    },
+    "nano-untuned": {
+      "label": "Nemotron Nano, untuned",
+      "short": "Nano untuned",
+      "n": 3340,
+      "partial": false,
+      "macro_f1": 82.7,
+      "f1_ci95": [
+        81.0,
+        84.2
+      ],
+      "usd_per_1m_msgs": 64.3,
+      "monthly_bill_100m": 6430.0,
+      "p50_ms": 804.4,
+      "p95_ms": 1157.2,
+      "refused_pct": 0.0,
+      "source": "results/nvidia-v1/ours_summary.json \u2192 systems.nano-untuned.nvidia_test",
+      "ci_source": "bootstrap macro-F1 on results/nvidia-v1/nano-untuned.jsonl (nv-test ids; refusal=wrong)",
+      "cost_note": "GPU rental amortized at full utilization"
+    },
+    "ultra-untuned": {
+      "label": "Nemotron Ultra 550B",
+      "short": "Ultra 550B",
+      "n": 3340,
+      "partial": false,
+      "macro_f1": 84.5,
+      "f1_ci95": [
+        83.0,
+        85.9
+      ],
+      "usd_per_1m_msgs": 107.9,
+      "monthly_bill_100m": 10790.0,
+      "p50_ms": 709.6,
+      "p95_ms": 1594.0,
+      "refused_pct": 0.0,
+      "source": "results/nvidia-v1/ours_summary.json \u2192 systems.ultra-untuned.nvidia_test",
+      "ci_source": "bootstrap macro-F1 on results/nvidia-v1/ultra-untuned.jsonl (nv-test ids; refusal=wrong)",
+      "cost_note": "serverless per-token (receipts)"
+    },
+    "frontier-router-a": {
+      "label": "GPT-6.1 Sol",
+      "short": "GPT-6.1 Sol",
+      "n": 3340,
+      "partial": false,
+      "macro_f1": 71.5,
+      "f1_ci95": [
+        69.8,
+        73.2
+      ],
+      "usd_per_1m_msgs": 1819.6,
+      "monthly_bill_100m": 181960.0,
+      "p50_ms": 3235.4,
+      "p95_ms": 6066.5,
+      "refused_pct": 1.9,
+      "source": "results/nvidia-v1-frontier/frontier-router-a.jsonl (refusal=wrong; $/1M = verdicts + ledger refusals \u00f7 n)",
+      "ci_source": "bootstrap macro-F1 on results/nvidia-v1-frontier/frontier-router-a.jsonl",
+      "cost_note": "measured frontier token spend"
+    },
+    "frontier-router-b": {
+      "label": "Claude Opus 5.5",
+      "short": "Opus 5.5",
+      "n": 3340,
+      "partial": false,
+      "macro_f1": 69.0,
+      "f1_ci95": [
+        67.3,
+        70.7
+      ],
+      "usd_per_1m_msgs": 6045.2,
+      "monthly_bill_100m": 604520.0,
+      "p50_ms": 2965.5,
+      "p95_ms": 5656.8,
+      "refused_pct": 13.0,
+      "source": "results/nvidia-v1-frontier/frontier-router-b.jsonl (refusal=wrong; $/1M = verdicts + ledger refusals \u00f7 n)",
+      "ci_source": "bootstrap macro-F1 on results/nvidia-v1-frontier/frontier-router-b.jsonl",
+      "cost_note": "measured frontier token spend"
+    }
+  },
+  "charts": {
+    "quality_vs_cost.png": "macro_f1 vs usd_per_1m_msgs (log x), 95% bootstrap CI on F1",
+    "monthly_bill.png": "usd_per_1m_msgs \u00d7 100 (100M messages/month)",
+    "latency.png": "p50_ms and p95_ms",
+    "title_card.png": "House Rules \u2014 Your safety policy, enforced.",
+    "architecture_card.png": "from docs/img/architecture.svg"
+  },
+  "regenerate": ".venv/bin/python docs/video/make_charts.py"
+}

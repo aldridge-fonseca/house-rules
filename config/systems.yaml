@@ -1,0 +1,317 @@
+# Named systems for the eval + demo.
+#
+# safety_one.registry.build_system(name, mode=...) turns each entry into a
+# Provider or SafetyPipeline:
+#
+#   kind: provider  -> a single classifier (frontier baselines, native
+#                      moderation, open guards). `backend` picks the real
+#                      class in safety_one/providers/; `env_key` names the
+#                      credential that enables it.
+#   kind: pipeline  -> a SafetyPipeline over per-route providers.
+#                      `overrides` are deep-merged into config/router.yaml,
+#                      which is how the ablation ladder is expressed.
+#
+# Every system must run offline: mode="mock" (or "auto" without keys) uses
+# deterministic MockProviders; `mock:` blocks below tune each fallback's
+# simulated latency/cost. mode="live" requires the listed env_key and raises
+# if it is missing. No paid calls until keys arrive.
+
+# Route -> live provider recipe, shared by every kind:pipeline system.
+# `fireworks_chat` / `fireworks_vision` read the model id from
+# config/router.yaml providers.<route>.model unless `model:` is set here
+# (verified deployment IDs live in router.yaml). `mock` pins a
+# route to its mock even in live mode.
+pipeline_roles:
+  # model_env: env var that overrides providers.<role>.model when set; the tuned
+  # deployment path (`export FIREWORKS_MODEL=...`) serves both text lanes.
+  specialist:   {backend: fireworks_chat, model_env: FIREWORKS_MODEL}
+  # Super VL on-demand deployment path comes from FIREWORKS_VISION_MODEL
+  # (accounts/<acct>/deployments/<id>, set by scripts/vision_deploy.sh).
+  # vision_live.install() upgrades this backend to the retrying live class;
+  # without the env var / key it falls back to the router.yaml mock.
+  vision:       {backend: fireworks_vision, model_env: FIREWORKS_VISION_MODEL}
+  multilingual: {backend: fireworks_chat, model_env: FIREWORKS_MODEL}
+  escalation:   {backend: fireworks_chat}
+
+systems:
+
+  # ---- pipeline ablation ladder --------------------------------------
+
+  specialist-only:
+    kind: pipeline
+    description: Fine-tuned NVIDIA specialist alone; no rule gate, router, or escalation.
+    overrides:
+      router: {route_order: [], default_route: specialist}
+      confidence_gate: {enabled: false}
+
+  +rules:
+    kind: pipeline
+    description: Specialist + deterministic PII/jailbreak/policy rule gate.
+    overrides:
+      router: {route_order: [rule], default_route: specialist}
+      confidence_gate: {enabled: false}
+
+  +router:
+    kind: pipeline
+    description: Rules + deterministic router (image / language / emoji); no escalation.
+    overrides:
+      confidence_gate: {enabled: false}
+
+  +escalation:
+    kind: pipeline
+    description: Full router + confidence gate to the bigger open reasoner (eval ablation arm).
+    # No overrides — complete config/router.yaml wiring.
+
+  full:
+    kind: pipeline
+    description: Canonical submission system; identical wiring to +escalation.
+    # No overrides — complete config/router.yaml wiring.
+
+  # ---- single-provider baselines (providers/frontier.py) -------------
+
+  frontier-gpt:
+    kind: provider
+    backend: frontier
+    provider: openai               # FrontierProvider("openai")
+    env_key: OPENAI_API_KEY
+    description: GPT-6 Astra, identical-prompt closed-frontier baseline.
+    mock:
+      base_latency_ms: 650
+      per_char_ms: 2.0
+      cost_per_call_usd: 0.012
+      cost_per_1k_chars_usd: 0.02
+      image_cost_usd: 0.01
+      sharpness: 1.0
+      jitter_ms: 350
+      jitter_prob: 0.08
+
+  frontier-claude:
+    kind: provider
+    backend: frontier
+    provider: anthropic            # FrontierProvider("anthropic")
+    env_key: ANTHROPIC_API_KEY
+    description: Claude Fable 5.1, identical-prompt closed-frontier baseline.
+    mock:
+      base_latency_ms: 700
+      per_char_ms: 2.0
+      cost_per_call_usd: 0.012
+      cost_per_1k_chars_usd: 0.02
+      image_cost_usd: 0.01
+      sharpness: 1.0
+      jitter_ms: 350
+      jitter_prob: 0.08
+
+  frontier-gemini:
+    kind: provider
+    backend: frontier
+    provider: gemini               # FrontierProvider("gemini")
+    env_key: GEMINI_API_KEY
+    description: Gemini 4 Argon, identical-prompt closed-frontier baseline.
+    mock:
+      base_latency_ms: 550
+      per_char_ms: 1.5
+      cost_per_call_usd: 0.003
+      cost_per_1k_chars_usd: 0.006
+      image_cost_usd: 0.003
+      sharpness: 1.0
+      jitter_ms: 300
+      jitter_prob: 0.08
+
+  openai-moderation:
+    kind: provider
+    backend: openai_moderation     # OpenAIModerationProvider
+    env_key: OPENAI_API_KEY
+    description: OpenAI's free native moderation endpoint; separate comparator to the GPT arm.
+    mock:
+      base_latency_ms: 80
+      per_char_ms: 0.05
+      cost_per_call_usd: 0.0       # endpoint is free
+      cost_per_1k_chars_usd: 0.0
+      sharpness: 1.0
+
+  open-guard:
+    kind: provider
+    backend: open_guard            # OpenGuardProvider
+    guard: llama_guard_3_8b
+    env_key: FIREWORKS_API_KEY
+    live_supported: false          # no Fireworks serverless listing today
+    description: Open guard model baseline; published scores only, so the mock always stands in.
+    mock:
+      base_latency_ms: 120
+      per_char_ms: 0.1
+      cost_per_call_usd: 0.0002
+      cost_per_1k_chars_usd: 0.0005
+      sharpness: 1.2
+
+  # ---- frontier arms via the OpenAI-compatible token router ----
+  # Live needs ROUTER_API_KEY + ROUTER_BASE_URL plus the arm's model env.
+  # Identical shared moderation prompt as the direct frontier arms; real USD
+  # from returned usage tokens via baselines/prices.yaml router.models (fill it
+  # at key time — unknown price => reported cost_basis "unknown", never
+  # guessed). Paid calls go through the shared frontier budget ledger:
+  # SAFETY_ONE_BUDGET_FRONTIER_USD (default $40, hard max $150).
+
+  frontier-router:
+    kind: provider
+    backend: frontier_router       # RouterFrontierProvider(model_env=...)
+    env_key: ROUTER_API_KEY
+    model_env: FRONTIER_MODEL
+    description: Closed-frontier model via the OpenAI-compatible token router (FRONTIER_MODEL), identical prompt.
+    mock:
+      base_latency_ms: 650
+      per_char_ms: 2.0
+      cost_per_call_usd: 0.012
+      cost_per_1k_chars_usd: 0.02
+      image_cost_usd: 0.01
+      sharpness: 1.0
+      jitter_ms: 350
+      jitter_prob: 0.08
+
+  frontier-router-a:
+    kind: provider
+    backend: frontier_router
+    env_key: ROUTER_API_KEY
+    model_env: FRONTIER_MODEL_A
+    description: Router frontier arm A (FRONTIER_MODEL_A); runs alongside arm B in one budget group.
+    mock:
+      base_latency_ms: 650
+      per_char_ms: 2.0
+      cost_per_call_usd: 0.012
+      cost_per_1k_chars_usd: 0.02
+      image_cost_usd: 0.01
+      sharpness: 1.0
+      jitter_ms: 350
+      jitter_prob: 0.08
+
+  frontier-router-b:
+    kind: provider
+    backend: frontier_router
+    env_key: ROUTER_API_KEY
+    model_env: FRONTIER_MODEL_B
+    description: Router frontier arm B (FRONTIER_MODEL_B); runs alongside arm A in one budget group.
+    mock:
+      base_latency_ms: 550
+      per_char_ms: 1.5
+      cost_per_call_usd: 0.003
+      cost_per_1k_chars_usd: 0.006
+      image_cost_usd: 0.003
+      sharpness: 1.0
+      jitter_ms: 300
+      jitter_prob: 0.08
+
+  # ---- image-route A/B (scripts/eval_vision.py) -----
+  #
+  # The claim under test: routing images to the NVIDIA VLM catches what a
+  # text-only model misses. Both arms run offline via mocks; the live arms
+  # are built by scripts/eval_vision.py with vision_live providers
+  # (NemotronLightningTextProvider / SuperVLVisionProvider).
+
+  vision-text-only:
+    kind: provider
+    backend: fireworks_chat
+    model: accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b
+    env_key: FIREWORKS_API_KEY
+    reasoning_effort: "none"       # required: without it Lightning reasons past the label
+    max_tokens: 16
+    price:                         # serverless $/1M tokens, https://fireworks.ai/pricing
+      input_per_million_usd: 0.05
+      output_per_million_usd: 0.20
+    description: >-
+      Text-path arm: serverless Nemotron Lightning 3.5 30B scores the image
+      rows' text/caption only — image bytes are never sent (eval_vision.py
+      strips image_path and uses vision_live.NemotronLightningTextProvider
+      with reasoning_effort=none). Cheap NVIDIA baseline at $0.05/$0.20 per 1M.
+    mock:
+      base_latency_ms: 60
+      per_char_ms: 0.03
+      cost_per_call_usd: 0.000007
+      cost_per_1k_chars_usd: 0.00005
+      sharpness: 0.9
+
+  vision-routed:
+    kind: pipeline
+    description: >-
+      Routed arm: the deterministic router sends has_image rows to the vision
+      role — Nemotron 3.5 Super VL on its on-demand 4x B200 deployment via
+      FIREWORKS_VISION_MODEL. Confidence gate off so every row gets exactly
+      one model call. Until a deployment exists it resolves to the mock
+      vision provider.
+    overrides:
+      confidence_gate: {enabled: false}
+
+  # ---- untuned NVIDIA serverless baselines --------
+  # `price` is read by FireworksProvider._call_cost: Verdict.cost_usd =
+  # (prompt_tokens*in + completion_tokens*out)/1e6 from the response `usage`.
+  # `reasoning_effort` / `max_tokens` / `logprobs` are sent in the request;
+  # constructor args and FIREWORKS_* env vars override them.
+
+  nvidia-lightning-zeroshot:
+    kind: provider
+    backend: fireworks_chat        # FireworksProvider, serverless chat completions
+    model: accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b
+    env_key: FIREWORKS_API_KEY
+    reasoning_effort: "none"         # without this the model reasons at length (verified 2026-11-02)
+    max_tokens: 256
+    timeout_s: 300                 # serverless queueing observed >90s at event load (2026-11-02)
+    price:                         # serverless $/1M tokens, per WAVE3_BRIEF (verified 2026-11-02)
+      input_per_million_usd: 0.05
+      output_per_million_usd: 0.20
+    description: NVIDIA Nemotron Lightning 3.5 30B-A3B, untuned zero-shot baseline; cheap serverless text lane.
+    mock:
+      base_latency_ms: 300
+      per_char_ms: 0.05
+      cost_per_call_usd: 0.000007
+      cost_per_1k_chars_usd: 0.00001
+      sharpness: 0.8
+      jitter_ms: 150
+      jitter_prob: 0.05
+
+  nvidia-ultra-zeroshot:
+    kind: provider
+    backend: fireworks_chat        # FireworksProvider, serverless chat completions
+    model: accounts/fireworks/models/nemotron-3-ultra-nvfp4   # same id as providers.escalation in router.yaml
+    env_key: FIREWORKS_API_KEY
+    reasoning_effort: "none"         # keep the zero-shot lane deterministic; escalate on gray zone instead
+    max_tokens: 256
+    timeout_s: 120
+    price:                         # serverless $/1M tokens, per WAVE3_BRIEF (verified 2026-11-02)
+      input_per_million_usd: 0.60
+      output_per_million_usd: 2.40
+    description: NVIDIA Nemotron 3 Ultra 550B-A55B NVFP4, untuned zero-shot baseline; also the pipeline escalation model.
+    mock:
+      base_latency_ms: 900
+      per_char_ms: 0.4
+      cost_per_call_usd: 0.000084
+      cost_per_1k_chars_usd: 0.0001
+      sharpness: 1.4
+      jitter_ms: 300
+      jitter_prob: 0.08
+
+  # ---- dev-calibrated arms -------------------------
+  # Chosen by scripts/calibrate_gate.py on data/nvidia/filtered/dev_calib.jsonl
+  # (2,479 DEV rows, never test): maximise dev macro-F1, escalation <= 20 %.
+  # Record: results/dev-calib/calibration.json. Run with scripts.nano_ladder:<name>.
+
+  specialist-cal:
+    kind: pipeline
+    description: >-
+      specialist-only with the dev-calibrated decision threshold
+      (unsafe iff P(unsafe) >= 0.575; dev macro-F1 91.6 vs 91.4 generated label).
+    overrides:
+      router: {route_order: [], default_route: specialist}
+      calibration: {unsafe_threshold: 0.575}
+      confidence_gate: {enabled: false}
+
+  full-cal:
+    kind: pipeline
+    description: >-
+      full wiring with dev-calibrated threshold 0.5 and gray zone [0.55, 0.60]
+      (no category overrides) -> 1.0 % of dev escalates to Nemotron 3 Ultra.
+      Dev: Ultra is weaker than the tuned Nano on the NVIDIA taxonomy, so the
+      dev-optimal band is narrow.
+    overrides:
+      calibration: {unsafe_threshold: 0.5}
+      confidence_gate:
+        gray_zone:
+          default: [0.55, 0.60]
+          category_overrides: null

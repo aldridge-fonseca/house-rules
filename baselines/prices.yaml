@@ -1,0 +1,54 @@
+# Standard synchronous rates verified 2026-11-02; USD per 1,000,000 tokens.
+# Gemini rates are introductory through 2026-11-30; change on 2026-12-01.
+# Sources: official provider model/pricing pages, listed in README.md.
+frontier:
+  openai:
+    model: gpt-6-astra
+    input_per_million_usd: 10.0
+    output_per_million_usd: 50.0
+  anthropic:
+    model: claude-fable-5-1
+    input_per_million_usd: 10.0
+    output_per_million_usd: 50.0
+  gemini:
+    model: gemini-4-argon
+    input_per_million_usd: 2.0
+    output_per_million_usd: 10.0
+    valid_through: 2026-11-30
+    from_2026-12-01:
+      input_per_million_usd: 4.0
+      output_per_million_usd: 20.0
+native_moderation:
+  openai:
+    model: omni-moderation-latest
+    input_per_million_usd: 0.0
+    output_per_million_usd: 0.0
+    note: Free moderation endpoint
+# OpenAI-compatible token-router rates (USD per 1M tokens), keyed by the exact
+# model name sent in the request (FRONTIER_MODEL / FRONTIER_MODEL_A / _B).
+# A model missing here means its reported run cost stays UNKNOWN (never
+# guessed); the budget ledger still caps spend via conservative reservations.
+router:
+  # Router's own machine-readable price list, fetched 2026-11-02. It is a
+  # ratio-priced gateway: input_per_million = model_ratio x $2, output =
+  # input x completion_ratio. The conversion was verified against two models
+  # whose direct rates we already verified today (gpt-6-astra ratio 5 -> $10/1M,
+  # gemini-4-argon ratio 1 -> $2/1M, both matching the frontier table above).
+  source_url: https://api.tokenrouter.com/api/pricing
+  models:
+    "openai/gpt-6.1-sol":
+      input_per_million_usd: 2.0
+      output_per_million_usd: 10.0
+      # tiered_pricing: $2/$10 <=272k request tokens, $4/$15 above; our rows
+      # are ~0.5-2k input tokens, far below the tier boundary.
+      source: https://api.tokenrouter.com/api/pricing
+    "openai/gpt-5-mini":
+      input_per_million_usd: 0.25
+      output_per_million_usd: 2.0
+      # flat: model_ratio 0.125 -> $0.25/1M, completion_ratio 8 -> $2.00/1M.
+      source: https://api.tokenrouter.com/api/pricing
+    "anthropic/claude-opus-5.5":
+      input_per_million_usd: 4.0
+      output_per_million_usd: 20.0
+      # model_ratio 2 -> $4/1M, completion_ratio 5 -> $20/1M (fetched 2026-11-02).
+      source: https://api.tokenrouter.com/api/pricing

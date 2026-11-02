@@ -1,0 +1,127 @@
+{
+  "final": {
+    "label": "Ours (tuned NVIDIA Nano system)",
+    "nvidia_test": {
+      "n": 3340,
+      "errors": 0,
+      "accuracy": 97.0,
+      "macro_f1": 95.3,
+      "unsafe_recall": 97.6,
+      "over_block": 5.5,
+      "p50_ms": 644.495,
+      "p95_ms": 1192.9805000000001,
+      "escalated_pct": 3.2,
+      "token_usd": 0.0096,
+      "gpu_alloc_usd": 0.1781,
+      "usd_per_1m_msgs": 56.2,
+      "refused_pct": 0.0
+    },
+    "disguised_v1": {
+      "n": 2222,
+      "errors": 0,
+      "accuracy": 82.1,
+      "macro_f1": 82.0,
+      "unsafe_recall": 89.4,
+      "over_block": 25.3,
+      "p50_ms": 570.75,
+      "p95_ms": 1114.7414999999999,
+      "escalated_pct": 9.8,
+      "token_usd": 0.0204,
+      "gpu_alloc_usd": 0.1334,
+      "usd_per_1m_msgs": 69.2,
+      "refused_pct": 0.0
+    }
+  },
+  "nano-untuned": {
+    "label": "NVIDIA Nano, untuned (small)",
+    "nvidia_test": {
+      "n": 3340,
+      "errors": 1,
+      "accuracy": 89.2,
+      "macro_f1": 82.7,
+      "unsafe_recall": 93.3,
+      "over_block": 27.8,
+      "p50_ms": 804.415,
+      "p95_ms": 1157.2255000000002,
+      "escalated_pct": 0.0,
+      "token_usd": 0.0,
+      "gpu_alloc_usd": 0.2149,
+      "usd_per_1m_msgs": 64.3,
+      "refused_pct": 0.0
+    },
+    "disguised_v1": {
+      "n": 2222,
+      "errors": 11,
+      "accuracy": 66.1,
+      "macro_f1": 63.3,
+      "unsafe_recall": 94.0,
+      "over_block": 62.2,
+      "p50_ms": 775.21,
+      "p95_ms": 1085.6219999999998,
+      "escalated_pct": 0.0,
+      "token_usd": 0.0,
+      "gpu_alloc_usd": 0.1392,
+      "usd_per_1m_msgs": 62.7,
+      "refused_pct": 0.0
+    }
+  },
+  "ultra-untuned": {
+    "label": "NVIDIA Ultra 550B, untuned (large)",
+    "nvidia_test": {
+      "n": 3340,
+      "errors": 0,
+      "accuracy": 88.6,
+      "macro_f1": 84.5,
+      "unsafe_recall": 86.7,
+      "over_block": 3.3,
+      "p50_ms": 709.6492900018347,
+      "p95_ms": 1594.0041507965416,
+      "escalated_pct": 0.0,
+      "token_usd": 0.3603,
+      "gpu_alloc_usd": 0.0,
+      "usd_per_1m_msgs": 107.9,
+      "refused_pct": 0.0
+    },
+    "disguised_v1": {
+      "n": 2222,
+      "errors": 0,
+      "accuracy": 82.0,
+      "macro_f1": 82.0,
+      "unsafe_recall": 83.8,
+      "over_block": 19.9,
+      "p50_ms": 712.9749995001475,
+      "p95_ms": 1012.8727552488263,
+      "escalated_pct": 0.0,
+      "token_usd": 0.3297,
+      "gpu_alloc_usd": 0.0,
+      "usd_per_1m_msgs": 148.4,
+      "refused_pct": 0.0
+    }
+  },
+  "frontier-router-a": {
+    "label": "GPT-6.1 Sol",
+    "nvidia_test": {
+      "n": 3340,
+      "macro_f1": 71.49017998798716,
+      "unsafe_recall": 69.95183401259726,
+      "over_block": 1.0920436817472698,
+      "refused_pct": 1.8562874251497006,
+      "p50_ms": 3235.4030085043632,
+      "usd_per_1m_msgs": 1819.6359281437124
+    },
+    "disguised_v1": null
+  },
+  "frontier-router-b": {
+    "label": "Claude Opus 5.5",
+    "nvidia_test": {
+      "n": 3340,
+      "macro_f1": 69.02532402014087,
+      "unsafe_recall": 67.61763616154131,
+      "over_block": 3.9001560062402496,
+      "refused_pct": 12.994011976047904,
+      "p50_ms": 2965.505278996716,
+      "usd_per_1m_msgs": 6045.23592814371
+    },
+    "disguised_v1": null
+  }
+}

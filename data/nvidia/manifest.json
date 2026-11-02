@@ -1,0 +1,105 @@
+{
+  "generated_at": "2026-11-02T08:24:54-0800",
+  "script": "scripts/prep_nvidia.py",
+  "source": {
+    "dataset": "nvidia/Nemotron-3.5-Content-Safety-Dataset",
+    "url": "https://huggingface.co/datasets/nvidia/Nemotron-3.5-Content-Safety-Dataset",
+    "license": "CC-BY-4.0",
+    "card": "https://huggingface.co/datasets/nvidia/Nemotron-3.5-Content-Safety-Dataset",
+    "raw_files": {
+      "train.parquet": {
+        "bytes": 62997819,
+        "sha256": "089052c8f1a63e45ac0d0825c47b13d5ce4b94de65bdea8d669bb18731805c53"
+      },
+      "validation.parquet": {
+        "bytes": 2003796,
+        "sha256": "b59b1408778e1cf6f8c604dd13a877953aebd15112588bf1cf1aff9d00070021"
+      },
+      "test.parquet": {
+        "bytes": 2242843,
+        "sha256": "4ad4c594383dcff83007630001cf1802337ef09ea8da80a9ef7f59c5fdd2a48d"
+      }
+    }
+  },
+  "params": {
+    "limit": 20000,
+    "dev_size": 2500,
+    "image_cap": 300,
+    "image_download": 60,
+    "seed": 17,
+    "skip_download": true
+  },
+  "outputs": {
+    "train_sft.jsonl": {
+      "rows": 20000,
+      "bytes": 13600769,
+      "sha256": "1d24971e56847f46268454bcaaea193eed97c8318de194919a8843defcd54e00"
+    },
+    "train_kway.jsonl": {
+      "rows": 20000,
+      "bytes": 13695328,
+      "sha256": "63e9de27346a89e1f62943017a17a228f3e5e1b510219b38684a1a93647feec7"
+    },
+    "dev_calib.jsonl": {
+      "rows": 2500,
+      "bytes": 1449897,
+      "sha256": "7baaebd69f1d4fdd63020afdb8dcb16148387a825b6b85dab3e454bbf0bc755b"
+    },
+    "validation.jsonl": {
+      "rows": 3340,
+      "bytes": 1802614,
+      "sha256": "fc76e844ebc166f0c8359204d908a7b943350952b3cbb823880985b883368b41"
+    },
+    "test.jsonl": {
+      "rows": 3340,
+      "bytes": 2328390,
+      "sha256": "65bb05bde9c09b136694330c6be25efe2beb75ca76b890a5b274e3a78b1bd509"
+    },
+    "image_rows.jsonl": {
+      "rows": 300,
+      "bytes": 151175,
+      "sha256": "248e403b66c546f89d1f0906dffdd41fc4aaaabc1014c7542e09e6cdedde1162"
+    }
+  },
+  "stats": {
+    "rows_total": {
+      "train": 88688,
+      "validation": 4814,
+      "test": 4814
+    },
+    "topic_rows_excluded": {
+      "train": 8712,
+      "validation": 0,
+      "test": 0
+    },
+    "image_rows": {
+      "train": 24517,
+      "validation": 1474,
+      "test": 1474
+    },
+    "text_safety_rows": {
+      "train": 55459,
+      "validation": 3340,
+      "test": 3340
+    },
+    "train_exact_dups_dropped": 8949
+  },
+  "leakage": {
+    "method": "sha256 exact on NFKC-lowered text + MinHash(6,2 bands) verified Jaccard>=0.8 on word-3gram shingles",
+    "train_rows_dropped_for_eval_collision": 194,
+    "exact_duplicate_rows_seen": 10646,
+    "train_exact_dups_dropped": 8949,
+    "train_internal_neardup_rows_kept": 16854,
+    "val_test_neardup_clusters_reported_not_dropped": 28,
+    "policy": "eval rows are sacred; colliding train rows dropped"
+  },
+  "taxonomy": "data/TAXONOMY.md (binary safe/unsafe headline; 26 slug categories)",
+  "system_prompt": "You are a content-safety classifier. Reply only with a JSON object {\"label\": \"safe\"|\"unsafe\", \"categories\": [slug, ...]} using the project taxonomy.",
+  "notes": [
+    "image bundle (images.tar.gz, ~3.9GB) intentionally not downloaded: disk cap",
+    "bundle image_path values resolve to images/<split>/<ref> after extraction",
+    "wikimedia-URL image rows exist only in the train split",
+    "topic_following rows (on-topic/off-topic) excluded from safety outputs",
+    "violated_categories is the dataset's row-level violation label; it can reflect the response side on input-safe/response-unsafe rows"
+  ]
+}

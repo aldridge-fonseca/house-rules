@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="300" viewBox="0 0 480 300">
+  <rect width="480" height="300" fill="#dfe7ef"/>
+  <rect width="480" height="60" fill="#24334d"/>
+  <text x="240" y="38" text-anchor="middle" font-family="Impact,sans-serif"
+        font-size="26" fill="#fff">A MEME YOU "CAN'T" MODERATE</text>
+  <text x="240" y="150" text-anchor="middle" font-family="Impact,sans-serif"
+        font-size="34" fill="#7a1622">deport them all,</text>
+  <text x="240" y="195" text-anchor="middle" font-family="Impact,sans-serif"
+        font-size="34" fill="#7a1622">they don't belong here</text>
+  <text x="240" y="275" text-anchor="middle" font-family="monospace"
+        font-size="12" fill="#555">image payload: hate text embedded in meme (VISION route demo)</text>
+</svg>

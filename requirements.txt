@@ -1,0 +1,12 @@
+PyYAML>=6.0
+pytest>=8.0
+pyarrow>=15  # prep_public.py reads WildGuardTest parquet; prep_nvidia.py reads NVIDIA parquet
+# Eval harness uses only Python stdlib; charts are standalone SVG (no added dependency).
+# Fireworks CLI is installed separately for managed SFT/deployment commands (firectl).
+# Managed SFT/deploy CLI prerequisite: current Fireworks firectl release (not a Python package).
+# demo: stdlib only (http.server + SSE) — no new deps
+emoji>=2.12  # demojize in normalize.py (stdlib fallback table if absent)
+Pillow>=10.2  # render_emoji.py + prep_vision.py image downscale
+ipykernel>=6.29  # kernel for notebooks/house_rules_eval.ipynb
+nbconvert>=7.16  # headless notebook execution (judge runs top-to-bottom, $0)
+matplotlib>=3.8  # notebook charts only; repo report charts stay dependency-free SVG
