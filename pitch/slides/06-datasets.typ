@@ -1,113 +1,86 @@
 #import "../theme.typ": *
 
 = TEST DATA
-== What we tested on
+== What we tested on — 5,562 held-out cases
 
-#let danger = rgb("#AC3546")
-#let strip-item(value, label) = stack(spacing: 1pt,
-  text(size: 24pt, weight: "bold", fill: hr, tracking: -0.5pt, value),
-  text(size: 10pt, fill: muted, label),
+#let disguise(label) = box(
+  inset: (x: 7pt, y: 3pt), radius: 4pt, fill: soft,
+  text(size: 11pt, weight: "semibold", fill: hr, label),
 )
-#let card(accent: hr, body) = block(
-  width: 100%, height: 218pt, inset: (x: 12pt, y: 10pt),
-  radius: 9pt, fill: soft, stroke: (top: 3pt + accent), breakable: false, body,
-)
-#let src-row(name, n) = grid(columns: (1fr, auto),
-  text(size: 10.5pt, name),
-  text(size: 10.5pt, weight: "bold", fill: ink, n),
-)
-#let lang(name, n) = grid(columns: (1fr, auto),
-  text(size: 9.5pt, fill: muted, name),
-  text(size: 9.5pt, weight: "semibold", fill: ink, n),
-)
+#let src(name, n, mark: none) = block(
+  width: 100%, inset: (x: 7pt, y: 6pt), radius: 7pt, fill: white,
+  stroke: 0.7pt + rgb("#D0DCDE"), breakable: false,
+)[
+  #set par(leading: 2.2pt, spacing: 0pt)
+  #stack(spacing: 3pt,
+    stack(dir: ltr, spacing: 4pt,
+      text(size: 11pt, weight: "bold", fill: ink, name),
+      if mark != none { mark } else { [] },
+    ),
+    text(size: 15pt, weight: "bold", fill: hr, n),
+  )
+]
 
 #slide[
-  #set par(leading: 2.5pt, spacing: 0pt)
+  #set par(leading: 3pt, spacing: 0pt)
 
-  // Big strip — four headline facts
-  #block(width: 100%, inset: (x: 6pt, y: 7pt), radius: 7pt, fill: soft)[
-    #grid(columns: (1fr, 1fr, 1fr, 1fr), column-gutter: 12pt, align: center,
-      strip-item("5,562", "evaluated rows"),
-      strip-item("23", "categories"),
-      strip-item("12", "languages"),
-      strip-item("8", "attack forms"),
-    )
-  ]
-
-  #v(8pt)
-
-  #grid(columns: (1fr, 1fr), column-gutter: 12pt,
-    // Card 1 — NVIDIA policy test
-    card(accent: nv)[
+  #grid(columns: (1fr, 1.15fr), column-gutter: 14pt,
+    // Tile 1 — NVIDIA held-out test
+    block(
+      width: 100%, height: 268pt, inset: 14pt, radius: 10pt, fill: soft,
+      stroke: (top: 3.5pt + nv), breakable: false,
+    )[
       #grid(columns: (1fr, auto), align: horizon,
-        text(size: 14pt, weight: "bold", fill: ink)[NVIDIA policy test],
-        logo-nv(10pt),
+        text(size: 16pt, weight: "bold", fill: ink)[NVIDIA Nemotron Content Safety v3.5 test],
+        logo-nv(12pt),
       )
-      #v(2pt)
-      #text(size: 10pt, fill: muted)[Nemotron Content-Safety v3.5 · held-out]
+      #v(18pt)
+      #text(size: 42pt, weight: "bold", fill: nv, tracking: -1pt)[3,340]
       #v(6pt)
-      #grid(columns: (auto, 1fr), column-gutter: 8pt, align: horizon,
-        text(size: 28pt, weight: "bold", fill: nv, tracking: -0.6pt)[3,340],
-        text(size: 11pt, fill: muted)[rows · follows THIS company's policy],
-      )
-      #v(6pt)
-      #grid(columns: (1fr, 1fr), column-gutter: 8pt,
-        stack(spacing: 0pt,
-          text(size: 17pt, weight: "bold", fill: danger)[2,699],
-          text(size: 10pt, fill: muted)[unsafe],
-        ),
-        stack(spacing: 0pt,
-          text(size: 17pt, weight: "bold", fill: hr)[641],
-          text(size: 10pt, fill: muted)[safe],
-        ),
-      )
-      #v(7pt)
-      #text(size: 10pt, weight: "bold", fill: ink)[Languages]
-      #v(3pt)
-      #grid(columns: (1fr, auto),
-        text(size: 10pt, weight: "semibold")[English],
-        text(size: 10pt, weight: "bold")[590],
-      )
-      #v(3pt)
-      #grid(columns: (1fr, 1fr), column-gutter: 8pt, row-gutter: 2pt,
-        lang("French", "250"), lang("German", "250"),
-        lang("Arabic", "250"), lang("Spanish", "250"),
-        lang("Dutch", "250"), lang("Korean", "250"),
-        lang("Hindi", "250"), lang("Chinese", "250"),
-        lang("Japanese", "250"), lang("Thai", "250"),
-        lang("Italian", "250"), [],
-      )
+      #text(size: 15pt, fill: muted)[held-out cases]
+      #v(18pt)
+      #text(size: 15pt, fill: ink)[23 harm categories · 12 languages]
     ],
 
-    // Card 2 — Disguised attacks
-    card(accent: hr)[
+    // Tile 2 — Disguised attacks synthetic set
+    block(
+      width: 100%, height: 268pt, inset: 14pt, radius: 10pt, fill: soft,
+      stroke: (top: 3.5pt + hr), breakable: false,
+    )[
       #grid(columns: (1fr, auto), align: horizon,
-        text(size: 14pt, weight: "bold", fill: ink)[Disguised attacks],
+        text(size: 16pt, weight: "bold", fill: ink)[Disguised attacks],
         chip("OUR SYNTHETIC SET", hr),
       )
-      #v(2pt)
-      #text(size: 10pt, fill: muted)[1,119 unsafe / 1,103 safe · 21 categories]
-      #v(6pt)
-      #grid(columns: (auto, 1fr), column-gutter: 8pt, align: horizon,
-        text(size: 28pt, weight: "bold", fill: hr, tracking: -0.6pt)[2,222],
-        text(size: 11pt, fill: muted)[rows = 300 messages × 8 forms],
+      #v(8pt)
+      #grid(columns: (auto, 1fr), column-gutter: 10pt, align: horizon,
+        text(size: 36pt, weight: "bold", fill: hr, tracking: -0.8pt)[2,222],
+        text(size: 14pt, fill: muted)[300 messages × 8 disguises],
       )
-      #v(7pt)
-      #text(size: 10pt, weight: "bold", fill: ink)[Base messages from 6 public sets]
-      #v(4pt)
-      #stack(spacing: 3pt,
-        src-row("HatemojiCheck", "633"),
-        src-row("OpenAI Moderation", "446"),
-        src-row("Aegis 2.0", "382"),
-        src-row("NVIDIA", "334"),
-        src-row("WildGuard", "320"),
-        src-row("XSTest", "107"),
+      #v(10pt)
+      #text(size: 12pt, weight: "bold", fill: muted, tracking: 0.4pt)[BUILT FROM]
+      #v(6pt)
+      #grid(columns: (1fr, 1fr, 1fr), column-gutter: 5pt, row-gutter: 5pt,
+        src("OpenAI Moderation", "446"),
+        src("WildGuard", "320"),
+        src("XSTest", "107"),
+        src("Aegis 2.0", "382", mark: logo-nv(9pt)),
+        src("HatemojiCheck", "633"),
+        src("NVIDIA", "334", mark: logo-nv(9pt)),
       )
     ],
   )
 
-  #v(6pt)
-  #text(size: 10.5pt, fill: muted)[Images: Super VL lane wired · not benchmarked (future work)]
+  #v(10pt)
+  #align(center, stack(dir: ltr, spacing: 5pt,
+    disguise([plain]),
+    disguise([leetspeak]),
+    disguise([look-alike letters]),
+    disguise([spaced]),
+    disguise([invisible]),
+    disguise([mixed case]),
+    disguise([emoji]),
+    disguise([base64]),
+  ))
 
-  #sources[Evaluated text only: 3,340 + 2,222 = 5,562 · results/nvidia-v1/final.jsonl]
+  #sources[Training data never overlaps these tests (170 overlapping rows removed)]
 ]

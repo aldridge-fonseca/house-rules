@@ -15,16 +15,14 @@ Requires Typst ≥ 0.15 (Touying 0.8.0 is fetched automatically on first compile
 |---|---|
 | `slides/01-title.typ` | Title |
 | `slides/02-why.typ` | Why moderation is needed |
-| `slides/03-frontier.typ` | Why a frontier model fails (frontier numbers only) |
-| `slides/04-harness.typ` | The harness: clean-up → rule gate → router → confidence gate → verdict |
-| `slides/05-finetune.typ` | How we fine-tuned (Fireworks Training API, receipts in `results/training/`) |
-| `slides/06-datasets.typ` | Test data (5,562 evaluated text rows; our synthetic disguised set) |
-| `slides/07-attacks.typ` | Every attack form tested (8 forms, clean-up on/off) |
-| `slides/08-results-quality.typ` | Results — quality (+ $/1M, paired CIs) |
-| `slides/09-results-cost.typ` | Results — always-on cost, speed, coverage |
-| `slides/10-ex-policy.typ` | Examples — your rulebook, not theirs |
-| `slides/11-ex-disguise.typ` | Examples — disguised attacks |
-| `slides/12-ex-harness.typ` | Examples — second opinion & fewer false alarms |
+| `slides/03-frontier.typ` | Why not just use a frontier model |
+| `slides/04-examples-a.typ` | Examples — where frontier models get it wrong |
+| `slides/05-examples-b.typ` | Examples — tricks and gray areas |
+| `slides/06-datasets.typ` | What we tested on (5,562 held-out cases) |
+| `slides/07-harness.typ` | Our moderation harness |
+| `slides/08-finetune.typ` | One Fireworks training job |
+| `slides/09-results.typ` | Results — better on your policy |
+| `slides/10-cheaper.typ` | Results — 32× cheaper |
 
 - `theme.typ` — colors and helpers. Brand colors: House Rules teal `hr`, NVIDIA green `nv`, Fireworks plum `fw`.
   **Series colors:** `c-ours`, `c-nano`, `c-ultra`, `c-gpt`, `c-opus`.
@@ -34,5 +32,5 @@ Requires Typst ≥ 0.15 (Touying 0.8.0 is fetched automatically on first compile
   `assets/examples/meme1.svg` — original unevaluated vision illustration.
   `assets/grok-incident.md` — concise public-source citations for slide 2.
 
-Rules: keep slides skimmable, never let content overflow (page count must stay 12),
+Rules: keep slides skimmable, never let content overflow (page count must stay 10),
 and only use numbers/claims that appear in `FACTS.md` / shipped `results/`.

@@ -1,34 +1,19 @@
 #import "../theme.typ": *
 
 = WHY THIS IS NEEDED
-== One AI feature. Eleven days.
+== Harmful AI content spreads fast.
 
 #slide[
-  #grid(columns: (1.2fr, 1fr), column-gutter: 32pt,
-    [
-      #text(size: 12pt, weight: "semibold", fill: muted)[GROK ON X · DEC 29 – JAN 8]
-      #v(12pt)
-      #stack(spacing: 25pt,
-        stat([\~3 million], [sexualized images of real people · researchers estimated]),
-        stat([\~23,000], [appeared to depict children · same estimate], color: ink),
-      )
-    ],
-    [
-      #block(width: 100%, breakable: false, inset: 20pt, radius: 10pt, fill: soft)[
-        #stack(spacing: 19pt,
-          text(size: 21pt, weight: "bold", fill: hr)[AI agents share our platforms.],
-          stack(spacing: 7pt,
-            text(size: 14pt, fill: muted)[Moderate every interaction.],
-            text(size: 21pt, weight: "semibold")[Agent → human \ Agent → agent],
-          ),
-          stack(spacing: 5pt,
-            text(size: 39pt, weight: "bold", fill: hr)[51%],
-            text(size: 14pt, fill: muted)[automated web traffic · 2024],
-          ),
-        )
-      ]
-    ],
+  #v(8pt)
+  #grid(columns: (1fr, 1fr, 1fr), column-gutter: 28pt, align: top,
+    stat([\~3 million], [sexualized images · 11 days on X]),
+    stat([\~23,000], [appeared to depict children], color: ink),
+    stat([51%], [of web traffic is bots · 2024], color: hr),
   )
+  #v(36pt)
+  #align(center, text(size: 22pt, weight: "semibold", fill: ink)[
+    AI agents now talk to humans — and to each other.
+  ])
   #sources[
     #link("https://www.theguardian.com/technology/2026/jan/22/grok-ai-generated-millions-sexualised-images-in-month-research-says")[CCDH estimate via The Guardian (Jan 22, 2026)] ·
     #link("https://www.imperva.com/resources/wp-content/uploads/sites/6/reports/2025-Bad-Bot-Report.pdf")[Imperva/Thales Bad Bot Report (2025)].
