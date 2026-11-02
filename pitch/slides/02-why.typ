@@ -9,8 +9,8 @@
       #text(size: 12pt, weight: "semibold", fill: muted)[GROK ON X · DEC 29 – JAN 8]
       #v(12pt)
       #stack(spacing: 25pt,
-        stat([\~3 million], [sexualized images of real people]),
-        stat([\~23,000], [appeared to depict children], color: ink),
+        stat([\~3 million], [sexualized images of real people · researchers estimated]),
+        stat([\~23,000], [appeared to depict children · same estimate], color: ink),
       )
     ],
     [
@@ -30,7 +30,8 @@
     ],
   )
   #sources[
-    #link("https://www.theguardian.com/technology/2026/jan/22/grok-ai-generated-millions-sexualised-images-in-month-research-says")[CCDH estimate reported by The Guardian (Jan 22, 2026)] ·
+    #link("https://www.theguardian.com/technology/2026/jan/22/grok-ai-generated-millions-sexualised-images-in-month-research-says")[CCDH estimate via The Guardian (Jan 22, 2026)] ·
     #link("https://www.imperva.com/resources/wp-content/uploads/sites/6/reports/2025-Bad-Bot-Report.pdf")[Imperva/Thales Bad Bot Report (2025)].
+ Estimates only.
   ]
 ]

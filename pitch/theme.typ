@@ -35,8 +35,12 @@
 // The lower source band is reserved by the page margin; no flow displacement.
 #let sources(body) = place(bottom + left, dy: 19pt,
   block(width: 100%, text(size: 7.5pt, fill: muted, body)))
-#let logo-nv(height) = image("assets/nvidia-logo.svg", height: height)
-#let logo-fw(height) = image("assets/fireworks-logo.svg", height: height)
+// Text branding only — SVG/PNG logos retained under assets/ but unused in slides
+// until written authorization is recorded (see assets/LOGOS.md).
+#let brand-nv(height: 11pt) = text(size: height, weight: "bold", fill: nv, tracking: 0.4pt)[NVIDIA]
+#let brand-fw(height: 11pt) = text(size: height, weight: "bold", fill: fw, tracking: 0.3pt)[Fireworks AI]
+#let logo-nv(height) = brand-nv(height: height)
+#let logo-fw(height) = brand-fw(height: height)
 
 #let house-theme(body) = {
   set text(font: ("Noto Sans", "DejaVu Sans"), size: 21pt, fill: ink)

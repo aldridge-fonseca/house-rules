@@ -11,10 +11,10 @@
   #place(top + left, dy: 210pt, rect(width: 64pt, height: 5pt, fill: hr, stroke: none))
   #place(top + left, dy: 244pt, text(size: 18pt, weight: "semibold")[Aldridge Fonseca · Gitika Rath])
   #place(top + left, dy: 295pt, block(width: 100%, fill: soft, radius: 8pt, inset: 15pt)[
-    #stack(spacing: 12pt,
-      text(size: 14pt, fill: ink, weight: "medium")[Built on NVIDIA Nemotron + Fireworks],
-      grid(columns: (auto, auto), column-gutter: 24pt, align: horizon,
-        logo-nv(18pt), logo-fw(18pt)),
+    #stack(spacing: 10pt,
+      text(size: 14pt, fill: ink, weight: "medium")[Built on Fireworks AI · NVIDIA Nemotron],
+      grid(columns: (auto, auto), column-gutter: 28pt, align: horizon,
+        brand-nv(height: 14pt), brand-fw(height: 14pt)),
     )
   ])
   #place(top + left, dy: 388pt, text(size: 10pt, fill: muted)[Fireworks: Deploy · with Microsoft & NVIDIA · Nov 2, 2026])

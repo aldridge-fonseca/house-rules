@@ -31,14 +31,14 @@
       #v(6pt)
       #text(size: 44pt, weight: "bold", fill: c-opus)[\$605K]
       #v(17pt)
-      #text(size: 12pt, fill: muted)[per month · 100M messages]
+      #text(size: 12pt, fill: muted)[always-on · 100M msgs/mo]
     ]),
     frontier-card([WRONG RULEBOOK], [
       #text(size: 48pt, weight: "bold", fill: ink)[\~30%]
       #v(3pt)
       #text(size: 15pt, weight: "semibold")[harmful missed]
       #v(12pt)
-      #text(size: 14pt, fill: muted)[Their lab’s policy, not yours.]
+      #text(size: 14pt, fill: muted)[Misses this policy’s unsafe cases.]
       #v(26pt)
       #text(size: 11pt, fill: muted)[HARMFUL CAUGHT]
       #v(6pt)
@@ -56,5 +56,5 @@
       #text(size: 15pt, weight: "semibold")[A moderator that refuses\ is useless.]
     ]),
   )
-  #sources[Held-out NVIDIA Nemotron Content-Safety policy test · n = 3,340 · same rows · refusals counted as wrong.]
+  #sources[Held-out NVIDIA Nemotron Content-Safety policy test · n = 3,340 · same rows · refusals counted as wrong. Monthly = always-on bills at 100M.]
 ]

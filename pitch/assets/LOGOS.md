@@ -1,5 +1,9 @@
 # Logo assets — sources and brand-usage notes
 
+**Deck policy (2026-11-02):** slides use text branding (`NVIDIA` / `Fireworks AI`) via
+`theme.typ` helpers. These SVG/PNG files are kept for reference only and are **not**
+embedded in `pitch.pdf` until written authorization is recorded.
+
 All files pulled 2026-11-02 from official sources only. Verified: both SVGs parse as valid
 XML; PNG checked (3840×2160, RGBA transparent).
 
