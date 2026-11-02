@@ -7,9 +7,10 @@
   #place(top + right, dx: 44pt, dy: -35pt,
     rect(width: 12pt, height: 100%, fill: hr, stroke: none))
   #place(top + left, dy: 72pt, text(size: 76pt, weight: "bold", fill: hr, tracking: -2pt)[House Rules])
-  #place(top + left, dy: 172pt, text(size: 30pt, weight: "medium", fill: ink)[Your safety policy, enforced.])
-  #place(top + left, dy: 230pt, rect(width: 64pt, height: 5pt, fill: hr, stroke: none))
-  #place(top + left, dy: 268pt, text(size: 18pt, weight: "semibold")[Aldridge Fonseca · Gitika Rath])
+  #place(top + left, dy: 166pt, text(size: 30pt, weight: "medium", fill: ink)[Your safety policy, enforced.])
+  #place(top + left, dy: 210pt, block(width: 760pt, text(size: 16pt, fill: muted)[A fine-tuned NVIDIA model on Fireworks that is #text(fill: hr, weight: "bold")[more accurate than GPT and Claude] on your policy, at #text(fill: hr, weight: "bold")[1/32 the price].]))
+  #place(top + left, dy: 262pt, rect(width: 64pt, height: 5pt, fill: hr, stroke: none))
+  #place(top + left, dy: 290pt, text(size: 18pt, weight: "semibold")[Aldridge Fonseca · Gitika Rath])
   #place(top + left, dy: 330pt, stack(dir: ltr, spacing: 14pt,
     text(size: 16pt, fill: ink, weight: "medium")[Built on],
     logo-nv(16pt),
