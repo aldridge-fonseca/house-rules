@@ -29,7 +29,6 @@ Requires Typst ≥ 0.15 (Touying 0.8.0 is fetched automatically on first compile
   Helpers: `stat`, `point`, `chip`, `hbars`, `sources`, `brand-nv`, `brand-fw` (text branding).
 - `FACTS.md` — finished evidence map (only allowed numbers/claims).
 - `assets/` — optional logo files kept for reference; slides use text branding.
-  `assets/examples/meme1.svg` — original unevaluated vision illustration.
   `assets/grok-incident.md` — concise public-source citations for slide 2.
 
 Rules: keep slides skimmable, never let content overflow (page count must stay 10),
